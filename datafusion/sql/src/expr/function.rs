@@ -145,8 +145,15 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
             if let Some(fm) = self.schema_provider.get_aggregate_meta(&name) {
                 let args =
                     self.function_args_to_expr(function.args, schema, planner_context)?;
+                let order_by = self.order_by_to_sort_expr(
+                    &function.order_by,
+                    schema,
+                    planner_context,
+                )?;
+                let order_by = (!order_by.is_empty()).then_some(order_by);
+
                 return Ok(Expr::AggregateUDF(expr::AggregateUDF::new(
-                    fm, args, None, None,
+                    fm, args, None, order_by,
                 )));
             }
 

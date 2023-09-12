@@ -154,10 +154,24 @@ async fn main() -> Result<()> {
         // This is the description of the state. `state()` must match the types here.
         Arc::new(vec![DataType::Float64, DataType::UInt32]),
     );
+    ctx.register_udaf(geometric_mean.clone());
 
     // get a DataFrame from the context
     // this table has 1 column `a` f32 with values {2,4,8,64}, whose geometric mean is 8.0.
     let df = ctx.table("t").await?;
+    let logical_plan = ctx
+        .state()
+        .create_logical_plan("SELECT sum(a order by a desc)  FROM t")
+        .await?;
+    println!(
+        "built-in aggregate Logical plan, has ORDER BY:\n{:?}",
+        logical_plan
+    );
+    let logical_plan = ctx
+        .state()
+        .create_logical_plan("SELECT geo_mean(a order by a desc)  FROM t")
+        .await?;
+    println!("UDAF Logical plan, missing ORDER BY:\n{:?}", logical_plan);
 
     // perform the aggregation
     let df = df.aggregate(vec![], vec![geometric_mean.call(vec![col("a")])])?;

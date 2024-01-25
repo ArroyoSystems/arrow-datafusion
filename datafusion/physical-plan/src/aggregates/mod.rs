@@ -95,6 +95,8 @@ pub enum AggregateMode {
     /// This mode requires that the input is partitioned by group key (like
     /// FinalPartitioned)
     SinglePartitioned,
+    /// Combine Partials
+    CombinePartial,
 }
 
 impl AggregateMode {
@@ -106,7 +108,7 @@ impl AggregateMode {
             AggregateMode::Partial
             | AggregateMode::Single
             | AggregateMode::SinglePartitioned => true,
-            AggregateMode::Final | AggregateMode::FinalPartitioned => false,
+            AggregateMode::Final | AggregateMode::FinalPartitioned | AggregateMode::CombinePartial => false,
         }
     }
 }
@@ -773,7 +775,7 @@ impl ExecutionPlan for AggregateExec {
 
     fn required_input_distribution(&self) -> Vec<Distribution> {
         match &self.mode {
-            AggregateMode::Partial => {
+            AggregateMode::Partial | AggregateMode::CombinePartial => {
                 vec![Distribution::UnspecifiedDistribution]
             }
             AggregateMode::FinalPartitioned | AggregateMode::SinglePartitioned => {
@@ -891,7 +893,7 @@ fn create_schema(
     fields.extend(group_by.output_fields(input_schema)?);
 
     match mode {
-        AggregateMode::Partial => {
+        AggregateMode::Partial | AggregateMode::CombinePartial => {
             // in partial mode, the fields of the accumulator's state
             for expr in aggr_expr {
                 fields.extend(expr.state_fields()?.iter().cloned())
@@ -1111,7 +1113,7 @@ pub fn aggregate_expressions(
             })
             .collect()),
         // In this mode, we build the merge expressions of the aggregation.
-        AggregateMode::Final | AggregateMode::FinalPartitioned => {
+        AggregateMode::Final | AggregateMode::FinalPartitioned | AggregateMode::CombinePartial => {
             let mut col_idx_base = col_idx_base;
             aggr_expr
                 .iter()
@@ -1160,7 +1162,7 @@ pub fn finalize_aggregation(
     mode: &AggregateMode,
 ) -> Result<Vec<ArrayRef>> {
     match mode {
-        AggregateMode::Partial => {
+        AggregateMode::Partial | AggregateMode::CombinePartial => {
             // Build the vector of states
             accumulators
                 .iter_mut()

@@ -1519,8 +1519,12 @@ impl AsExecutionPlan for protobuf::PhysicalPlanNode {
                 AggregateMode::Single => protobuf::AggregateMode::Single,
                 AggregateMode::SinglePartitioned => {
                     protobuf::AggregateMode::SinglePartitioned
+                },
+                AggregateMode::CombinePartial => {
+                    unimplemented!()
                 }
             };
+
             let input_schema = exec.input_schema();
             let input = protobuf::PhysicalPlanNode::try_from_physical_plan(
                 exec.input().to_owned(),

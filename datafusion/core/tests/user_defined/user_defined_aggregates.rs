@@ -158,6 +158,20 @@ async fn test_udaf_returning_struct() {
     assert_batches_eq!(expected, &execute(&ctx, sql).await.unwrap());
 }
 
+#[tokio::test]
+async fn test_struct_join() {
+    let TestContext { ctx, test_state: _ } = TestContext::new();
+    let sql = "SElECT l.result as result FROM (SELECT first(value, time) as result from t) as l JOIN (SELECT first(value, time) as result from t) as r ON l.result = r.result";
+    let expected = [
+        "+------------------------------------------------+",
+        "| result                                         |",
+        "+------------------------------------------------+",
+        "| {value: 2.0, time: 1970-01-01T00:00:00.000002} |",
+        "+------------------------------------------------+",
+    ];
+    assert_batches_eq!(expected, &execute(&ctx, sql).await.unwrap());
+}
+
 /// Demonstrate extracting the fields from a structure using a subquery
 #[tokio::test]
 async fn test_udaf_returning_struct_subquery() {

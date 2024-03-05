@@ -977,6 +977,11 @@ impl ExecutionPlan for SortExec {
             CardinalityEffect::LowerEqual
         }
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics_set.reset();
+        self.input.reset()
+    }
 }
 
 #[cfg(test)]

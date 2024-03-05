@@ -238,6 +238,11 @@ impl ExecutionPlan for ProjectionExec {
     fn cardinality_effect(&self) -> CardinalityEffect {
         CardinalityEffect::Equal
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// If 'e' is a direct column reference, returns the field level

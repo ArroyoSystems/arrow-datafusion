@@ -382,6 +382,11 @@ impl ExecutionPlan for FilterExec {
     fn cardinality_effect(&self) -> CardinalityEffect {
         CardinalityEffect::LowerEqual
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// This function ensures that all bounds in the `ExprBoundaries` vector are

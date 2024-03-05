@@ -283,6 +283,11 @@ impl ExecutionPlan for StreamingTableExec {
             metrics: self.metrics.clone(),
         }))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 #[cfg(test)]

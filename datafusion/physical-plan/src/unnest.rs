@@ -199,6 +199,11 @@ impl ExecutionPlan for UnnestExec {
     fn metrics(&self) -> Option<MetricsSet> {
         Some(self.metrics.clone_inner())
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 #[derive(Clone, Debug)]

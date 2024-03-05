@@ -191,6 +191,10 @@ impl ExecutionPlan for OutputRequirementExec {
     fn statistics(&self) -> Result<Statistics> {
         self.input.statistics()
     }
+
+    fn reset(&self) -> Result<()> {
+        self.input.reset()
+    }
 }
 
 impl PhysicalOptimizerRule for OutputRequirements {

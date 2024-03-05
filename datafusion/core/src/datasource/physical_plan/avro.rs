@@ -181,6 +181,11 @@ impl ExecutionPlan for AvroExec {
             cache: self.cache.clone(),
         }))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 #[cfg(feature = "avro")]

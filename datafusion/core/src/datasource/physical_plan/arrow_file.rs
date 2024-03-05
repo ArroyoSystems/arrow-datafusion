@@ -213,6 +213,11 @@ impl ExecutionPlan for ArrowExec {
             cache: self.cache.clone(),
         }))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 pub struct ArrowOpener {

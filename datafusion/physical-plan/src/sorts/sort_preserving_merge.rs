@@ -315,6 +315,11 @@ impl ExecutionPlan for SortPreservingMergeExec {
     fn supports_limit_pushdown(&self) -> bool {
         true
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 #[cfg(test)]

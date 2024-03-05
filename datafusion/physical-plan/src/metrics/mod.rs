@@ -321,6 +321,10 @@ impl MetricsSet {
 
         Self { metrics }
     }
+
+    pub fn clear(&mut self) {
+        self.metrics.clear();
+    }
 }
 
 impl Display for MetricsSet {
@@ -373,6 +377,11 @@ impl ExecutionPlanMetricsSet {
     pub fn clone_inner(&self) -> MetricsSet {
         let guard = self.inner.lock();
         (*guard).clone()
+    }
+
+    pub fn reset(&self) {
+        let mut guard = self.inner.lock();
+        guard.clear();
     }
 }
 

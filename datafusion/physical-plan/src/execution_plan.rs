@@ -422,6 +422,8 @@ pub trait ExecutionPlan: Debug + DisplayAs + Send + Sync {
     fn cardinality_effect(&self) -> CardinalityEffect {
         CardinalityEffect::Unknown
     }
+
+    fn reset(&self) -> Result<()>;
 }
 
 /// Extension trait provides an easy API to fetch various properties of

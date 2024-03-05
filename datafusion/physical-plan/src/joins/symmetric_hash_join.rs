@@ -557,6 +557,12 @@ impl ExecutionPlan for SymmetricHashJoinExec {
             }))
         }
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.left.reset()?;
+        self.right.reset()
+    }
 }
 
 /// A stream that issues [RecordBatch]es as they arrive from the right  of the join.

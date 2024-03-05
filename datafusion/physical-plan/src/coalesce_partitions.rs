@@ -183,6 +183,11 @@ impl ExecutionPlan for CoalescePartitionsExec {
     fn cardinality_effect(&self) -> CardinalityEffect {
         CardinalityEffect::Equal
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 #[cfg(test)]

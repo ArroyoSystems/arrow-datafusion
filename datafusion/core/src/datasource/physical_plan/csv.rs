@@ -469,6 +469,11 @@ impl ExecutionPlan for CsvExec {
             cache: self.cache.clone(),
         }))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 /// A Config for [`CsvOpener`]

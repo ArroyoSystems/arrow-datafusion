@@ -201,6 +201,11 @@ impl ExecutionPlan for GlobalLimitExec {
     fn supports_limit_pushdown(&self) -> bool {
         true
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// LocalLimitExec applies a limit to a single partition
@@ -340,6 +345,11 @@ impl ExecutionPlan for LocalLimitExec {
 
     fn cardinality_effect(&self) -> CardinalityEffect {
         CardinalityEffect::LowerEqual
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
     }
 }
 

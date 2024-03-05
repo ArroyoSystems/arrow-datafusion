@@ -864,6 +864,11 @@ impl ExecutionPlan for ParquetExec {
             schema_adapter_factory: self.schema_adapter_factory.clone(),
         }))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 fn should_enable_page_index(

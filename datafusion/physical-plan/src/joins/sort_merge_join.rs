@@ -409,6 +409,12 @@ impl ExecutionPlan for SortMergeJoinExec {
             &self.schema,
         )
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.left.reset()?;
+        self.right.reset()
+    }
 }
 
 /// Metrics for SortMergeJoinExec

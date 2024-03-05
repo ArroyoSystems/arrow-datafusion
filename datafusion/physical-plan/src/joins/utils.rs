@@ -706,6 +706,7 @@ pub fn build_join_schema(
 /// This is useful for joins where the results of one child are buffered in memory
 /// and shared across potentially multiple output partitions
 pub(crate) struct OnceAsync<T> {
+    #[allow(dead_code)]
     fut: Mutex<Option<OnceFut<T>>>,
 }
 
@@ -729,6 +730,7 @@ impl<T: 'static> OnceAsync<T> {
     ///
     /// If this is not the first call, will return a [`OnceFut`] referring
     /// to the same future as was returned by the first call
+    #[allow(dead_code)]
     pub(crate) fn once<F, Fut>(&self, f: F) -> OnceFut<T>
     where
         F: FnOnce() -> Fut,

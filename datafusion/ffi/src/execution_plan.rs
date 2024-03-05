@@ -268,6 +268,14 @@ impl ExecutionPlan for ForeignExecutionPlan {
             }
         }
     }
+
+    fn reset(&self) -> Result<()> {
+        for c in &self.children {
+            c.reset()?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

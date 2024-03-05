@@ -180,6 +180,10 @@ impl ExecutionPlan for StatisticsValidation {
     fn statistics(&self) -> Result<Statistics> {
         Ok(self.stats.clone())
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 fn init_ctx(stats: Statistics, schema: Schema) -> Result<SessionContext> {

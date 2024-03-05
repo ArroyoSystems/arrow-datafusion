@@ -20,7 +20,7 @@
 
 use super::utils::{
     adjust_right_output_partitioning, BatchSplitter, BatchTransformer,
-    BuildProbeJoinMetrics, NoopBatchTransformer, OnceAsync, OnceFut,
+    BuildProbeJoinMetrics, NoopBatchTransformer, OnceFut,
     StatefulStreamResult,
 };
 use crate::coalesce_partitions::CoalescePartitionsExec;
@@ -72,8 +72,6 @@ pub struct CrossJoinExec {
     pub right: Arc<dyn ExecutionPlan>,
     /// The schema once the join is applied
     schema: SchemaRef,
-    /// Build-side data
-    left_fut: OnceAsync<JoinLeftData>,
     /// Execution plan metrics
     metrics: ExecutionPlanMetricsSet,
     cache: PlanProperties,
@@ -105,7 +103,6 @@ impl CrossJoinExec {
             left,
             right,
             schema,
-            left_fut: Default::default(),
             metrics: ExecutionPlanMetricsSet::default(),
             cache,
         }
@@ -159,15 +156,11 @@ impl CrossJoinExec {
     }
 }
 
-/// Asynchronously collect the result of the left child
-async fn load_left_input(
+fn merge_stream(
     left: Arc<dyn ExecutionPlan>,
     context: Arc<TaskContext>,
-    metrics: BuildProbeJoinMetrics,
-    reservation: MemoryReservation,
-) -> Result<JoinLeftData> {
+) -> Result<SendableRecordBatchStream> {
     // merge all left parts into a single stream
-    let left_schema = left.schema();
     let merge = if left.output_partitioning().partition_count() != 1 {
         Arc::new(CoalescePartitionsExec::new(left))
     } else {
@@ -175,6 +168,16 @@ async fn load_left_input(
     };
     let stream = merge.execute(0, context)?;
 
+    Ok(stream)
+}
+
+/// Asynchronously collect the result of the left child
+async fn load_left_input(
+    stream: SendableRecordBatchStream,
+    metrics: BuildProbeJoinMetrics,
+    reservation: MemoryReservation,
+) -> Result<JoinLeftData> {
+    let left_schema = stream.schema();
     // Load all batches and count the rows
     let (batches, _metrics, reservation) = stream
         .try_fold((Vec::new(), metrics, reservation), |mut acc, batch| async {
@@ -268,14 +271,13 @@ impl ExecutionPlan for CrossJoinExec {
         let enforce_batch_size_in_joins =
             context.session_config().enforce_batch_size_in_joins();
 
-        let left_fut = self.left_fut.once(|| {
-            load_left_input(
-                Arc::clone(&self.left),
-                context,
-                join_metrics.clone(),
-                reservation,
-            )
-        });
+        let left_stream = merge_stream(self.left.clone(), context.clone())?;
+
+        let left_fut = OnceFut::new(load_left_input(
+            left_stream,
+            join_metrics.clone(),
+            reservation,
+        ));
 
         if enforce_batch_size_in_joins {
             Ok(Box::pin(CrossJoinStream {
@@ -307,6 +309,12 @@ impl ExecutionPlan for CrossJoinExec {
             self.left.statistics()?,
             self.right.statistics()?,
         ))
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.left.reset()?;
+        self.right.reset()
     }
 }
 

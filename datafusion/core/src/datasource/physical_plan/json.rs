@@ -222,6 +222,11 @@ impl ExecutionPlan for NdJsonExec {
             cache: self.cache.clone(),
         }))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 /// A [`FileOpener`] that opens a JSON file and yields a [`FileOpenFuture`]

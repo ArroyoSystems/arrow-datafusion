@@ -265,6 +265,10 @@ impl ExecutionPlan for MockExec {
             None,
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 fn clone_error(e: &DataFusionError) -> DataFusionError {
@@ -400,6 +404,12 @@ impl ExecutionPlan for BarrierExec {
             None,
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        Err(DataFusionError::NotImplemented(
+            "BarrierExec::reset".to_string(),
+        ))
+    }
 }
 
 /// A mock execution plan that errors on a call to execute
@@ -482,6 +492,10 @@ impl ExecutionPlan for ErrorExec {
         _context: Arc<TaskContext>,
     ) -> Result<SendableRecordBatchStream> {
         internal_err!("ErrorExec, unsurprisingly, errored in partition {partition}")
+    }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -572,6 +586,10 @@ impl ExecutionPlan for StatisticsExec {
 
     fn statistics(&self) -> Result<Statistics> {
         Ok(self.stats.clone())
+    }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -668,6 +686,10 @@ impl ExecutionPlan for BlockingExec {
             schema: Arc::clone(&self.schema),
             _refs: Arc::clone(&self.refs),
         }))
+    }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -815,6 +837,10 @@ impl ExecutionPlan for PanicExec {
             schema: Arc::clone(&self.schema),
             ready: false,
         }))
+    }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
     }
 }
 

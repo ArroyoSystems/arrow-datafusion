@@ -30,7 +30,7 @@ use crate::joins::utils::{
     build_join_schema, check_join_is_valid, estimate_join_statistics, get_anti_indices,
     get_final_indices_from_bit_map, get_semi_indices,
     partitioned_join_output_partitioning, BuildProbeJoinMetrics, ColumnIndex, JoinFilter,
-    OnceAsync, OnceFut,
+    OnceFut,
 };
 use crate::metrics::{ExecutionPlanMetricsSet, MetricsSet};
 use crate::{
@@ -87,8 +87,6 @@ pub struct NestedLoopJoinExec {
     pub(crate) join_type: JoinType,
     /// The schema once the join is applied
     schema: SchemaRef,
-    /// Build-side data
-    inner_table: OnceAsync<JoinLeftData>,
     /// Information of index and left / right placement of columns
     column_indices: Vec<ColumnIndex>,
     /// Execution metrics
@@ -118,7 +116,6 @@ impl NestedLoopJoinExec {
             filter,
             join_type: *join_type,
             schema,
-            inner_table: Default::default(),
             column_indices,
             metrics: Default::default(),
             cache,
@@ -255,29 +252,23 @@ impl ExecutionPlan for NestedLoopJoinExec {
                 .register(context.memory_pool());
 
         let (outer_table, inner_table) = if left_is_build_side(self.join_type) {
+            let left_stream = self.left.execute(0, context.clone())?;
             // left must be single partition
-            let inner_table = self.inner_table.once(|| {
-                load_specified_partition_of_input(
-                    0,
-                    self.left.clone(),
-                    context.clone(),
-                    join_metrics.clone(),
-                    load_reservation,
-                )
-            });
+            let inner_table = OnceFut::new(load_specified_partition_of_input(
+                left_stream,
+                join_metrics.clone(),
+                load_reservation,
+            ));
             let outer_table = self.right.execute(partition, context)?;
             (outer_table, inner_table)
         } else {
+            let right_stream = self.right.execute(0, context.clone())?;
             // right must be single partition
-            let inner_table = self.inner_table.once(|| {
-                load_specified_partition_of_input(
-                    0,
-                    self.right.clone(),
-                    context.clone(),
-                    join_metrics.clone(),
-                    load_reservation,
-                )
-            });
+            let inner_table = OnceFut::new(load_specified_partition_of_input(
+                right_stream,
+                join_metrics.clone(),
+                load_reservation,
+            ));
             let outer_table = self.left.execute(partition, context)?;
             (outer_table, inner_table)
         };
@@ -309,6 +300,12 @@ impl ExecutionPlan for NestedLoopJoinExec {
             &self.schema,
         )
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.left.reset()?;
+        self.right.reset()
+    }
 }
 
 // For the nested loop join, different join type need the different distribution for
@@ -338,13 +335,11 @@ fn distribution_from_join_type(join_type: &JoinType) -> Vec<Distribution> {
 
 /// Asynchronously collect the specified partition data of the input
 async fn load_specified_partition_of_input(
-    partition: usize,
-    input: Arc<dyn ExecutionPlan>,
-    context: Arc<TaskContext>,
+    stream: SendableRecordBatchStream,
     join_metrics: BuildProbeJoinMetrics,
     reservation: MemoryReservation,
 ) -> Result<JoinLeftData> {
-    let stream = input.execute(partition, context)?;
+    let schema = stream.schema();
 
     // Load all batches and count the rows
     let (batches, num_rows, _, reservation) = stream
@@ -367,7 +362,7 @@ async fn load_specified_partition_of_input(
         )
         .await?;
 
-    let merged_batch = concat_batches(&input.schema(), &batches, num_rows)?;
+    let merged_batch = concat_batches(&schema, &batches, num_rows)?;
 
     Ok((merged_batch, reservation))
 }

@@ -1420,6 +1420,10 @@ pub(crate) mod tests {
         fn statistics(&self) -> Result<Statistics> {
             self.input.statistics()
         }
+
+        fn reset(&self) -> Result<()> {
+            self.input.reset()
+        }
     }
 
     pub(crate) fn schema() -> SchemaRef {

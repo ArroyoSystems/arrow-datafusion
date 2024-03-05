@@ -289,6 +289,11 @@ impl ExecutionPlan for FilterExec {
     fn statistics(&self) -> Result<Statistics> {
         Self::statistics_helper(&self.input, self.predicate(), self.default_selectivity)
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// This function ensures that all bounds in the `ExprBoundaries` vector are

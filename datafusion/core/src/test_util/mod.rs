@@ -315,6 +315,10 @@ impl ExecutionPlan for UnboundedExec {
             batch: self.batch.clone(),
         }))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Debug)]

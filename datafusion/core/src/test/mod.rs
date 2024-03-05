@@ -447,6 +447,10 @@ impl ExecutionPlan for StatisticsExec {
     fn statistics(&self) -> Result<Statistics> {
         Ok(self.stats.clone())
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 pub mod object_store;

@@ -63,6 +63,10 @@ impl WorkTable {
     pub(super) fn write(&self, input: Vec<RecordBatch>) {
         self.batches.lock().unwrap().replace(input);
     }
+
+    pub(super) fn reset(&self) {
+        self.batches.lock().unwrap().take();
+    }
 }
 
 /// A temporary "working table" operation where the input data will be
@@ -185,6 +189,12 @@ impl ExecutionPlan for WorkTableExec {
 
     fn statistics(&self) -> Result<Statistics> {
         Ok(Statistics::new_unknown(&self.schema()))
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.work_table.reset();
+        Ok(())
     }
 }
 

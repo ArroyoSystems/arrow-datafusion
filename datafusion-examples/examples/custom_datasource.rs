@@ -270,4 +270,8 @@ impl ExecutionPlan for CustomExec {
             None,
         )?))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }

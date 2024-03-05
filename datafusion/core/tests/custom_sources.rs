@@ -174,6 +174,10 @@ impl ExecutionPlan for CustomExecutionPlan {
                 .collect(),
         })
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[async_trait]

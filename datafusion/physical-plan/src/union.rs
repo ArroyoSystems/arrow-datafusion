@@ -288,6 +288,14 @@ impl ExecutionPlan for UnionExec {
     fn benefits_from_input_partitioning(&self) -> Vec<bool> {
         vec![false; self.children().len()]
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        for input in &self.inputs {
+            input.reset()?;
+        }
+        Ok(())
+    }
 }
 
 /// Combines multiple input streams by interleaving them.
@@ -466,6 +474,14 @@ impl ExecutionPlan for InterleaveExec {
 
     fn benefits_from_input_partitioning(&self) -> Vec<bool> {
         vec![false; self.children().len()]
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        for input in &self.inputs {
+            input.reset()?;
+        }
+        Ok(())
     }
 }
 

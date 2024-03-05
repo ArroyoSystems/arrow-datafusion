@@ -623,6 +623,11 @@ impl ExecutionPlan for RepartitionExec {
     fn statistics(&self) -> Result<Statistics> {
         self.input.statistics()
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 impl RepartitionExec {

@@ -31,7 +31,6 @@ use datafusion_common::{internal_err, plan_err, DataFusionError, Result};
 use datafusion_execution::TaskContext;
 use datafusion_physical_expr::{EquivalenceProperties, LexOrdering, PhysicalSortExpr};
 
-use async_trait::async_trait;
 use futures::stream::StreamExt;
 use log::debug;
 
@@ -157,7 +156,6 @@ impl DisplayAs for StreamingTableExec {
     }
 }
 
-#[async_trait]
 impl ExecutionPlan for StreamingTableExec {
     fn as_any(&self) -> &dyn Any {
         self
@@ -218,5 +216,9 @@ impl ExecutionPlan for StreamingTableExec {
             )),
             None => stream,
         })
+    }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
     }
 }

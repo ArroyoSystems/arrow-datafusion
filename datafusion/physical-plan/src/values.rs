@@ -194,6 +194,10 @@ impl ExecutionPlan for ValuesExec {
             None,
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -180,6 +180,13 @@ impl ExecutionPlan for RecursiveQueryExec {
     fn statistics(&self) -> Result<Statistics> {
         Ok(Statistics::new_unknown(&self.schema()))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.work_table.reset();
+        self.static_term.reset()?;
+        self.recursive_term.reset()
+    }
 }
 
 impl DisplayAs for RecursiveQueryExec {

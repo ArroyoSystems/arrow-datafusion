@@ -278,6 +278,10 @@ impl ExecutionPlan for FileSinkExec {
             stream,
         )))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Create a output record batch with a count

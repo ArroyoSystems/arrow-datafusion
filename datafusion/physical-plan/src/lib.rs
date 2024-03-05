@@ -444,6 +444,8 @@ pub trait ExecutionPlan: Debug + DisplayAs + Send + Sync {
     fn statistics(&self) -> Result<Statistics> {
         Ok(Statistics::new_unknown(&self.schema()))
     }
+
+    fn reset(&self) -> Result<()>;
 }
 
 /// Indicate whether a data exchange is needed for the input of `plan`, which will be very helpful

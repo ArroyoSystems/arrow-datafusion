@@ -199,6 +199,10 @@ impl ExecutionPlan for AnalyzeExec {
             futures::stream::once(output),
         )))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.input.reset()
+    }
 }
 
 /// Creates the ouput of AnalyzeExec as a RecordBatch

@@ -2610,6 +2610,10 @@ mod tests {
         ) -> Result<SendableRecordBatchStream> {
             unimplemented!("NoOpExecutionPlan::execute");
         }
+
+        fn reset(&self) -> Result<()> {
+            Ok(())
+        }
     }
 
     //  Produces an execution plan where the schema is mismatched from

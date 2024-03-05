@@ -155,6 +155,11 @@ impl ExecutionPlan for AvroExec {
     fn metrics(&self) -> Option<MetricsSet> {
         Some(self.metrics.clone_inner())
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 #[cfg(feature = "avro")]

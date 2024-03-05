@@ -171,6 +171,11 @@ impl ExecutionPlan for CoalesceBatchesExec {
     fn statistics(&self) -> Result<Statistics> {
         self.input.statistics()
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 struct CoalesceBatchesStream {

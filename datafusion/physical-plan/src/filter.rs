@@ -252,6 +252,11 @@ impl ExecutionPlan for FilterExec {
             column_statistics,
         })
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// This function ensures that all bounds in the `ExprBoundaries` vector are

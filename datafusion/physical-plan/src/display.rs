@@ -541,6 +541,10 @@ mod tests {
                 )),
             }
         }
+
+        fn reset(&self) -> datafusion_common::Result<()> {
+            Ok(())
+        }
     }
 
     fn test_stats_display(exec: TestStatsExecPlan, show_stats: bool) {

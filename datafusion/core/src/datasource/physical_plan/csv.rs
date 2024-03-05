@@ -236,6 +236,11 @@ impl ExecutionPlan for CsvExec {
     fn metrics(&self) -> Option<MetricsSet> {
         Some(self.metrics.clone_inner())
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 /// A Config for [`CsvOpener`]

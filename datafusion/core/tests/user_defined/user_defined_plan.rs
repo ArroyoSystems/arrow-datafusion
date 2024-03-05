@@ -453,7 +453,6 @@ impl DisplayAs for TopKExec {
     }
 }
 
-#[async_trait]
 impl ExecutionPlan for TopKExec {
     /// Return a reference to Any that can be used for downcasting
     fn as_any(&self) -> &dyn Any {
@@ -501,6 +500,10 @@ impl ExecutionPlan for TopKExec {
         // to improve the optimizability of this plan
         // better statistics inference could be provided
         Ok(Statistics::new_unknown(&self.schema()))
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.input.reset()
     }
 }
 

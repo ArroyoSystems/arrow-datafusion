@@ -411,6 +411,8 @@ pub trait ExecutionPlan: Debug + DisplayAs + Send + Sync {
     fn statistics(&self) -> Result<Statistics> {
         Ok(Statistics::new_unknown(&self.schema()))
     }
+
+    fn reset(&self) -> Result<()>;
 }
 
 /// Extension trait provides an easy API to fetch various properties of

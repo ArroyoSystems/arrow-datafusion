@@ -417,6 +417,11 @@ impl ExecutionPlan for ParquetExec {
     fn statistics(&self) -> Result<Statistics> {
         Ok(self.projected_statistics.clone())
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 /// Implements [`FileOpener`] for a parquet file

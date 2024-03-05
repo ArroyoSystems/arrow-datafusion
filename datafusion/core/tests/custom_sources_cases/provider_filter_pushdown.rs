@@ -138,6 +138,10 @@ impl ExecutionPlan for CustomPlan {
         // but we want to test the filter pushdown not the CBOs
         Ok(Statistics::new_unknown(&self.schema()))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Clone)]

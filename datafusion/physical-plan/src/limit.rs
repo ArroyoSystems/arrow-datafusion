@@ -260,6 +260,11 @@ impl ExecutionPlan for GlobalLimitExec {
         };
         Ok(stats)
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// LocalLimitExec applies a limit to a single partition
@@ -427,6 +432,11 @@ impl ExecutionPlan for LocalLimitExec {
             },
         };
         Ok(stats)
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
     }
 }
 

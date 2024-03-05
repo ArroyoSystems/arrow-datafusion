@@ -195,6 +195,11 @@ impl ExecutionPlan for ArrowExec {
     fn statistics(&self) -> Result<Statistics> {
         Ok(self.projected_statistics.clone())
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 pub struct ArrowOpener {

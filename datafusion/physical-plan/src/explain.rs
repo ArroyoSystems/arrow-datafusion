@@ -175,6 +175,10 @@ impl ExecutionPlan for ExplainExec {
             futures::stream::iter(vec![Ok(record_batch)]),
         )))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// If this plan should be shown, given the previous plan that was

@@ -289,6 +289,10 @@ impl ExecutionPlan for DataSinkExec {
     fn metrics(&self) -> Option<MetricsSet> {
         self.sink.metrics()
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Create a output record batch with a count

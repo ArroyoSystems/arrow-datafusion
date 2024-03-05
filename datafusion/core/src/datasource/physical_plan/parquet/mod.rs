@@ -735,6 +735,11 @@ impl ExecutionPlan for ParquetExec {
     fn statistics(&self) -> Result<Statistics> {
         Ok(self.projected_statistics.clone())
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 fn should_enable_page_index(

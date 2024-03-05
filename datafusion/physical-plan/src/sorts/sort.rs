@@ -926,6 +926,11 @@ impl ExecutionPlan for SortExec {
     fn statistics(&self) -> Result<Statistics> {
         self.input.statistics()
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics_set.reset();
+        self.input.reset()
+    }
 }
 
 #[cfg(test)]

@@ -206,6 +206,11 @@ impl ExecutionPlan for NdJsonExec {
     fn metrics(&self) -> Option<MetricsSet> {
         Some(self.metrics.clone_inner())
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 /// A [`FileOpener`] that opens a JSON file and yields a [`FileOpenFuture`]

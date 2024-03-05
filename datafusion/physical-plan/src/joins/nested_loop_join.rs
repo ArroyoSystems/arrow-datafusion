@@ -32,7 +32,7 @@ use crate::joins::utils::{
     adjust_indices_by_join_type, apply_join_filter_to_indices, build_batch_from_indices,
     build_join_schema, check_join_is_valid, estimate_join_statistics,
     get_final_indices_from_bit_map, BuildProbeJoinMetrics, ColumnIndex, JoinFilter,
-    OnceAsync, OnceFut,
+    OnceFut,
 };
 use crate::metrics::{ExecutionPlanMetricsSet, MetricsSet};
 use crate::{
@@ -149,8 +149,6 @@ pub struct NestedLoopJoinExec {
     pub(crate) join_type: JoinType,
     /// The schema once the join is applied
     schema: SchemaRef,
-    /// Build-side data
-    inner_table: OnceAsync<JoinLeftData>,
     /// Information of index and left / right placement of columns
     column_indices: Vec<ColumnIndex>,
     /// Execution metrics
@@ -182,7 +180,6 @@ impl NestedLoopJoinExec {
             filter,
             join_type: *join_type,
             schema,
-            inner_table: Default::default(),
             column_indices,
             metrics: Default::default(),
             cache,
@@ -307,16 +304,23 @@ impl ExecutionPlan for NestedLoopJoinExec {
             MemoryConsumer::new(format!("NestedLoopJoinLoad[{partition}]"))
                 .register(context.memory_pool());
 
-        let inner_table = self.inner_table.once(|| {
+        let merge = if self.left.output_partitioning().partition_count() != 1 {
+            Arc::new(CoalescePartitionsExec::new(Arc::clone(&self.left)))
+        } else {
+            Arc::clone(&self.left)
+        };
+        let stream = merge.execute(0, context.clone())?;
+        
+        
+        let inner_table = OnceFut::new(
             collect_left_input(
-                Arc::clone(&self.left),
-                Arc::clone(&context),
+                stream,
                 join_metrics.clone(),
                 load_reservation,
                 need_produce_result_in_final(self.join_type),
                 self.right().output_partitioning().partition_count(),
             )
-        });
+        );
         let outer_table = self.right.execute(partition, context)?;
 
         Ok(Box::pin(NestedLoopJoinStream {
@@ -344,24 +348,22 @@ impl ExecutionPlan for NestedLoopJoinExec {
             &self.schema,
         )
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 /// Asynchronously collect input into a single batch, and creates `JoinLeftData` from it
 async fn collect_left_input(
-    input: Arc<dyn ExecutionPlan>,
-    context: Arc<TaskContext>,
+    stream: SendableRecordBatchStream,
     join_metrics: BuildProbeJoinMetrics,
     reservation: MemoryReservation,
     with_visited_left_side: bool,
     probe_threads_count: usize,
 ) -> Result<JoinLeftData> {
-    let schema = input.schema();
-    let merge = if input.output_partitioning().partition_count() != 1 {
-        Arc::new(CoalescePartitionsExec::new(input))
-    } else {
-        input
-    };
-    let stream = merge.execute(0, context)?;
+    let schema = stream.schema();
 
     // Load all batches and count the rows
     let (batches, num_rows, metrics, mut reservation) = stream

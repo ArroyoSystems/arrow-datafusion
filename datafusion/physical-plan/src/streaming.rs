@@ -33,7 +33,6 @@ use datafusion_physical_expr::{EquivalenceProperties, LexOrdering};
 
 use crate::limit::LimitStream;
 use crate::metrics::{BaselineMetrics, ExecutionPlanMetricsSet, MetricsSet};
-use async_trait::async_trait;
 use futures::stream::StreamExt;
 use log::debug;
 
@@ -203,7 +202,6 @@ impl DisplayAs for StreamingTableExec {
     }
 }
 
-#[async_trait]
 impl ExecutionPlan for StreamingTableExec {
     fn name(&self) -> &'static str {
         "StreamingTableExec"
@@ -263,6 +261,11 @@ impl ExecutionPlan for StreamingTableExec {
 
     fn metrics(&self) -> Option<MetricsSet> {
         Some(self.metrics.clone_inner())
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
     }
 }
 

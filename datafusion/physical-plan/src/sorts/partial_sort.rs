@@ -305,6 +305,10 @@ impl ExecutionPlan for PartialSortExec {
     fn statistics(&self) -> Result<Statistics> {
         self.input.statistics()
     }
+
+    fn reset(&self) -> Result<()> {
+        todo!()
+    }
 }
 
 struct PartialSortStream {

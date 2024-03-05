@@ -245,6 +245,11 @@ impl ExecutionPlan for ProjectionExec {
             Arc::clone(&self.schema),
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// If e is a direct column reference, returns the field level

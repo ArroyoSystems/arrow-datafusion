@@ -153,6 +153,10 @@ impl ExecutionPlan for MemoryExec {
             self.projection.clone(),
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl MemoryExec {

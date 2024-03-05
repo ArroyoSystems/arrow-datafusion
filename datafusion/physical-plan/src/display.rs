@@ -570,6 +570,10 @@ mod tests {
                 Self::Ok => Ok(Statistics::new_unknown(self.schema().as_ref())),
             }
         }
+
+        fn reset(&self) -> datafusion_common::Result<()> {
+            Ok(())
+        }
     }
 
     fn test_stats_display(exec: TestStatsExecPlan, show_stats: bool) {

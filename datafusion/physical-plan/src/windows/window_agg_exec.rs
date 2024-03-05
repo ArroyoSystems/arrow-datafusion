@@ -263,6 +263,11 @@ impl ExecutionPlan for WindowAggExec {
             total_byte_size: Precision::Absent,
         })
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 fn create_schema(

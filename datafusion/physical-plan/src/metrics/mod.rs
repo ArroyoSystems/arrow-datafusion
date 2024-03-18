@@ -312,7 +312,7 @@ impl MetricsSet {
 
     pub fn clear(&mut self) {
         self.metrics.clear();
-        }
+    }
 }
 
 impl Display for MetricsSet {

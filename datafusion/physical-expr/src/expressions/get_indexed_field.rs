@@ -217,9 +217,11 @@ impl PhysicalExpr for GetIndexedFieldExpr {
 
     fn nullable(&self, input_schema: &Schema) -> Result<bool> {
         let arg_dt = self.arg.data_type(input_schema)?;
-        self.schema_access(input_schema)?
-            .get_accessed_field(&arg_dt)
-            .map(|f| f.is_nullable())
+        Ok(self.arg.nullable(input_schema)?
+            || self
+                .schema_access(input_schema)?
+                .get_accessed_field(&arg_dt)
+                .map(|f| f.is_nullable())?)
     }
 
     fn evaluate(&self, batch: &RecordBatch) -> Result<ColumnarValue> {

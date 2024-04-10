@@ -409,6 +409,9 @@ impl AsExecutionPlan for PhysicalPlanNode {
                     protobuf::AggregateMode::SinglePartitioned => {
                         AggregateMode::SinglePartitioned
                     }
+                    protobuf::AggregateMode::CombinePartial => {
+                        AggregateMode::CombinePartial
+                    }
                 };
 
                 let num_expr = hash_agg.group_expr.len();
@@ -1471,10 +1474,8 @@ impl AsExecutionPlan for PhysicalPlanNode {
                 AggregateMode::Single => protobuf::AggregateMode::Single,
                 AggregateMode::SinglePartitioned => {
                     protobuf::AggregateMode::SinglePartitioned
-                },
-                AggregateMode::CombinePartial => {
-                    unimplemented!()
                 }
+                AggregateMode::CombinePartial => protobuf::AggregateMode::CombinePartial,
             };
 
             let input_schema = exec.input_schema();

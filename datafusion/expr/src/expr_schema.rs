@@ -316,10 +316,8 @@ impl ExprSchemable for Expr {
             Expr::GetIndexedField(GetIndexedField { expr, field }) => {
                 // If schema is nested, check if parent is nullable
                 // if it is, return early
-                if let Expr::Column(col) = expr.as_ref() {
-                    if input_schema.nullable(col)? {
-                        return Ok(true);
-                    }
+                if expr.nullable(input_schema)? {
+                    return Ok(true);
                 }
                 field_for_index(expr, field, input_schema).map(|x| x.is_nullable())
             }

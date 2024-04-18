@@ -1604,6 +1604,7 @@ enum AggregateMode {
   FINAL_PARTITIONED = 2;
   SINGLE = 3;
   SINGLE_PARTITIONED = 4;
+  COMBINE_PARTIAL = 5;
 }
 
 message PartiallySortedInputOrderMode {

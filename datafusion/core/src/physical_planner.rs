@@ -743,13 +743,13 @@ impl DefaultPhysicalPlanner {
                         );
                     }
 
-                    let logical_schema = logical_plan.schema();
+                    let logical_input_schema = input.schema();
                     let window_expr = window_expr
                         .iter()
                         .map(|e| {
                             create_window_expr(
                                 e,
-                                logical_schema,
+                                logical_input_schema,
                                 session_state.execution_props(),
                             )
                         })
@@ -1572,11 +1572,11 @@ pub fn is_window_frame_bound_valid(window_frame: &WindowFrame) -> bool {
 pub fn create_window_expr_with_name(
     e: &Expr,
     name: impl Into<String>,
-    logical_schema: &DFSchema,
+    logical_input_schema: &DFSchema,
     execution_props: &ExecutionProps,
 ) -> Result<Arc<dyn WindowExpr>> {
     let name = name.into();
-    let physical_schema: &Schema = &logical_schema.into();
+    let physical_input_schema: &Schema = &logical_input_schema.into();
     match e {
         Expr::WindowFunction(WindowFunction {
             fun,
@@ -1586,11 +1586,20 @@ pub fn create_window_expr_with_name(
             window_frame,
             null_treatment,
         }) => {
-            let args = create_physical_exprs(args, logical_schema, execution_props)?;
-            let partition_by =
-                create_physical_exprs(partition_by, logical_schema, execution_props)?;
-            let order_by =
-                create_physical_sort_exprs(order_by, logical_schema, execution_props)?;
+            let args = args
+                .iter()
+                .map(|e| create_physical_expr(e, logical_input_schema, execution_props))
+                .collect::<Result<Vec<_>>>()?;
+            let partition_by = partition_by
+                .iter()
+                .map(|e| create_physical_expr(e, logical_input_schema, execution_props))
+                .collect::<Result<Vec<_>>>()?;
+            let order_by = order_by
+                .iter()
+                .map(|e| {
+                    create_physical_sort_expr(e, logical_input_schema, execution_props)
+                })
+                .collect::<Result<Vec<_>>>()?;
 
             if !is_window_frame_bound_valid(window_frame) {
                 return plan_err!(
@@ -1610,7 +1619,7 @@ pub fn create_window_expr_with_name(
                 &partition_by,
                 &order_by,
                 window_frame,
-                physical_schema,
+                physical_input_schema,
                 ignore_nulls,
             )
         }
@@ -1621,7 +1630,7 @@ pub fn create_window_expr_with_name(
 /// Create a window expression from a logical expression or an alias
 pub fn create_window_expr(
     e: &Expr,
-    logical_schema: &DFSchema,
+    logical_input_schema: &DFSchema,
     execution_props: &ExecutionProps,
 ) -> Result<Arc<dyn WindowExpr>> {
     // unpack aliased logical expressions, e.g. "sum(col) over () as total"
@@ -1629,7 +1638,7 @@ pub fn create_window_expr(
         Expr::Alias(Alias { expr, name, .. }) => (name.clone(), expr.as_ref()),
         _ => (e.display_name()?, e),
     };
-    create_window_expr_with_name(e, name, logical_schema, execution_props)
+    create_window_expr_with_name(e, name, logical_input_schema, execution_props)
 }
 
 type AggregateExprWithOptionalArgs = (

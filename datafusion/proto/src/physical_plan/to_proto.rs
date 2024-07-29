@@ -64,7 +64,7 @@ pub fn serialize_physical_aggr_expr(
                     aggregate_function: Some(physical_aggregate_expr_node::AggregateFunction::UserDefinedAggrFunction(name)),
                     expr: expressions,
                     ordering_req,
-                    distinct: false,
+                    distinct: a.is_distinct(),
                 },
             )),
         });

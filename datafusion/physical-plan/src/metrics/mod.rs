@@ -357,8 +357,8 @@ impl ExecutionPlanMetricsSet {
     }
 
     /// Add the specified metric to the underlying metric set
-    pub fn register(&self, metric: Arc<Metric>) {
-        self.inner.lock().push(metric)
+    pub fn register(&self, _metric: Arc<Metric>) {
+        //self.inner.lock().push(metric)
     }
 
     /// Return a clone of the inner [`MetricsSet`]

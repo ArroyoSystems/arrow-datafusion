@@ -17,10 +17,10 @@
 
 //! Builder for creating arbitrary metrics
 
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow};
 
 use super::{
-    Count, ExecutionPlanMetricsSet, Gauge, Label, Metric, MetricValue, Time, Timestamp,
+    Count, ExecutionPlanMetricsSet, Gauge, Label, MetricValue, Time, Timestamp,
 };
 
 /// Structure for constructing metrics, counters, timers, etc.
@@ -45,7 +45,7 @@ use super::{
 /// ```
 pub struct MetricBuilder<'a> {
     /// Location that the metric created by this builder will be added do
-    metrics: &'a ExecutionPlanMetricsSet,
+    _metrics: &'a ExecutionPlanMetricsSet,
 
     /// optional partition number
     partition: Option<usize>,
@@ -58,7 +58,7 @@ impl<'a> MetricBuilder<'a> {
     /// Create a new `MetricBuilder` that will register the result of `build()` with the `metrics`
     pub fn new(metrics: &'a ExecutionPlanMetricsSet) -> Self {
         Self {
-            metrics,
+            _metrics: metrics,
             partition: None,
             labels: vec![],
         }
@@ -87,14 +87,7 @@ impl<'a> MetricBuilder<'a> {
 
     /// Consume self and create a metric of the specified value
     /// registered with the MetricsSet
-    pub fn build(self, value: MetricValue) {
-        let Self {
-            labels,
-            partition,
-            metrics,
-        } = self;
-        let metric = Arc::new(Metric::new_with_labels(value, partition, labels));
-        metrics.register(metric);
+    pub fn build(self, _value: MetricValue) {
     }
 
     /// Consume self and create a new counter for recording output rows

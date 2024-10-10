@@ -96,6 +96,7 @@ pub fn functions() -> Vec<Arc<ScalarUDF>> {
         nvl(),
         nvl2(),
         arrow_typeof(),
+        r#struct(),
         named_struct(),
         // Note: most users invoke `get_field` indirectly via field access
         // syntax like `my_struct_col['field_name']`, which results in a call to

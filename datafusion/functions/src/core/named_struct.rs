@@ -39,6 +39,8 @@ fn named_struct_expr(args: &[ColumnarValue]) -> Result<ColumnarValue> {
         );
     }
 
+    let all_scalar = args.iter().all(|arg| matches!(arg, ColumnarValue::Scalar(_)));
+
     let (names, values): (Vec<_>, Vec<_>) = args
         .chunks_exact(2)
         .enumerate()
@@ -70,7 +72,13 @@ fn named_struct_expr(args: &[ColumnarValue]) -> Result<ColumnarValue> {
         })
         .collect::<Vec<_>>();
 
-    Ok(ColumnarValue::Array(Arc::new(StructArray::from(fields))))
+    let struct_array = Arc::new(StructArray::from(fields));
+
+    if all_scalar {
+        Ok(ColumnarValue::Scalar(ScalarValue::Struct(struct_array)))
+    } else {
+        Ok(ColumnarValue::Array(struct_array))
+    }
 }
 
 #[derive(Debug)]

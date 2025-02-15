@@ -274,6 +274,7 @@ unsafe extern "C" fn state_fields_fn_wrapper(
         return_field,
         ordering_fields,
         is_distinct,
+        for_sliding: false,
     };
 
     let state_fields = rresult_return!(udaf.state_fields(args));
@@ -682,6 +683,7 @@ mod tests {
             return_field: Field::new("f", DataType::Float64, true).into(),
             ordering_fields: &[Arc::clone(&a_field)],
             is_distinct: false,
+            for_sliding: false,
         })?;
 
         assert_eq!(state_fields.len(), 3);

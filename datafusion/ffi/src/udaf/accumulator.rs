@@ -45,12 +45,12 @@ pub struct FFI_Accumulator {
 
     // Evaluate and return a ScalarValues as protobuf bytes
     pub evaluate:
-        unsafe extern "C" fn(accumulator: &mut Self) -> RResult<RVec<u8>, RString>,
+        unsafe extern "C" fn(accumulator: &Self) -> RResult<RVec<u8>, RString>,
 
     pub size: unsafe extern "C" fn(accumulator: &Self) -> usize,
 
     pub state:
-        unsafe extern "C" fn(accumulator: &mut Self) -> RResult<RVec<RVec<u8>>, RString>,
+        unsafe extern "C" fn(accumulator: &Self) -> RResult<RVec<RVec<u8>>, RString>,
 
     pub merge_batch: unsafe extern "C" fn(
         accumulator: &mut Self,
@@ -109,9 +109,9 @@ unsafe extern "C" fn update_batch_fn_wrapper(
 }
 
 unsafe extern "C" fn evaluate_fn_wrapper(
-    accumulator: &mut FFI_Accumulator,
+    accumulator: &FFI_Accumulator,
 ) -> RResult<RVec<u8>, RString> {
-    let accumulator = accumulator.inner_mut();
+    let accumulator = accumulator.inner();
 
     let scalar_result = rresult_return!(accumulator.evaluate());
     let proto_result: datafusion_proto::protobuf::ScalarValue =
@@ -125,9 +125,9 @@ unsafe extern "C" fn size_fn_wrapper(accumulator: &FFI_Accumulator) -> usize {
 }
 
 unsafe extern "C" fn state_fn_wrapper(
-    accumulator: &mut FFI_Accumulator,
+    accumulator: &FFI_Accumulator,
 ) -> RResult<RVec<RVec<u8>>, RString> {
-    let accumulator = accumulator.inner_mut();
+    let accumulator = accumulator.inner();
 
     let state = rresult_return!(accumulator.state());
     let state = state
@@ -237,10 +237,10 @@ impl Accumulator for ForeignAccumulator {
         }
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         unsafe {
             let scalar_bytes =
-                df_result!((self.accumulator.evaluate)(&mut self.accumulator))?;
+                df_result!((self.accumulator.evaluate)(&self.accumulator))?;
 
             let proto_scalar =
                 datafusion_proto::protobuf::ScalarValue::decode(scalar_bytes.as_ref())
@@ -254,10 +254,10 @@ impl Accumulator for ForeignAccumulator {
         unsafe { (self.accumulator.size)(&self.accumulator) }
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         unsafe {
             let state_protos =
-                df_result!((self.accumulator.state)(&mut self.accumulator))?;
+                df_result!((self.accumulator.state)(&self.accumulator))?;
 
             state_protos
                 .into_iter()

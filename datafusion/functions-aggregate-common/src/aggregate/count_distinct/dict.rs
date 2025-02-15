@@ -52,7 +52,7 @@ impl Accumulator for DictionaryCountAccumulator {
         self.inner.update_batch(values.as_slice())
     }
 
-    fn evaluate(&mut self) -> datafusion_common::Result<ScalarValue> {
+    fn evaluate(&self) -> datafusion_common::Result<ScalarValue> {
         self.inner.evaluate()
     }
 
@@ -60,7 +60,7 @@ impl Accumulator for DictionaryCountAccumulator {
         self.inner.size()
     }
 
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         self.inner.state()
     }
 

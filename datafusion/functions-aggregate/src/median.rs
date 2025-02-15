@@ -242,7 +242,32 @@ impl<T: ArrowNumericType> Debug for MedianAccumulator<T> {
 }
 
 impl<T: ArrowNumericType> Accumulator for MedianAccumulator<T> {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        // Convert `all_values` to `ListArray` and return a single List ScalarValue
+
+        // Build offsets
+        let offsets =
+            OffsetBuffer::new(ScalarBuffer::from(vec![0, self.all_values.len() as i32]));
+
+        // Build inner array
+        let values_array = PrimitiveArray::<T>::new(
+            ScalarBuffer::from(self.all_values.clone()),
+            None,
+        )
+            .with_data_type(self.data_type.clone());
+
+        // Build the result list array
+        let list_array = ListArray::new(
+            Arc::new(Field::new_list_field(self.data_type.clone(), true)),
+            offsets,
+            Arc::new(values_array),
+            None,
+        );
+
+        Ok(vec![ScalarValue::List(Arc::new(list_array))])
+    }
+
+    fn state_mut(&mut self) -> Result<Vec<ScalarValue>> {
         // Convert `all_values` to `ListArray` and return a single List ScalarValue
 
         // Build offsets
@@ -282,9 +307,14 @@ impl<T: ArrowNumericType> Accumulator for MedianAccumulator<T> {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate_mut(&mut self) -> Result<ScalarValue> {
         let d = std::mem::take(&mut self.all_values);
         let median = calculate_median::<T>(d);
+        ScalarValue::new_primitive::<T>(median, &self.data_type)
+    }
+
+    fn evaluate(&self) -> Result<ScalarValue> {
+        let median = calculate_median::<T>(self.all_values.clone());
         ScalarValue::new_primitive::<T>(median, &self.data_type)
     }
 
@@ -522,7 +552,7 @@ impl<T: ArrowNumericType> Debug for DistinctMedianAccumulator<T> {
 }
 
 impl<T: ArrowNumericType> Accumulator for DistinctMedianAccumulator<T> {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         let all_values = self
             .distinct_values
             .iter()
@@ -560,10 +590,20 @@ impl<T: ArrowNumericType> Accumulator for DistinctMedianAccumulator<T> {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate_mut(&mut self) -> Result<ScalarValue> {
         let d = std::mem::take(&mut self.distinct_values)
             .into_iter()
             .map(|v| v.0)
+            .collect::<Vec<_>>();
+        let median = calculate_median::<T>(d);
+        ScalarValue::new_primitive::<T>(median, &self.data_type)
+    }
+
+    fn evaluate(&self) -> Result<ScalarValue> {
+        let d = self
+            .distinct_values
+            .iter()
+            .map(|v| v.0.clone())
             .collect::<Vec<_>>();
         let median = calculate_median::<T>(d);
         ScalarValue::new_primitive::<T>(median, &self.data_type)

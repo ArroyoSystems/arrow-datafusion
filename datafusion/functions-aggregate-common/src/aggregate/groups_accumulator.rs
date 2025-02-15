@@ -325,7 +325,7 @@ impl GroupsAccumulator for GroupsAccumulatorAdapter {
 
         let results: Vec<ScalarValue> = states
             .into_iter()
-            .map(|mut state| {
+            .map(|state| {
                 self.free_allocation(state.size());
                 state.accumulator.evaluate()
             })
@@ -347,7 +347,7 @@ impl GroupsAccumulator for GroupsAccumulatorAdapter {
         // which we need to form into columns
         let mut results: Vec<Vec<ScalarValue>> = vec![];
 
-        for mut state in states {
+        for state in states {
             self.free_allocation(state.size());
             let accumulator_state = state.accumulator.state()?;
             results.resize_with(accumulator_state.len(), Vec::new);

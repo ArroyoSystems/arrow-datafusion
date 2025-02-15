@@ -20,7 +20,7 @@
 use arrow::array::{ArrayRef, OffsetSizeTrait};
 use datafusion_common::cast::as_list_array;
 use datafusion_common::utils::SingleRowListArrayBuilder;
-use datafusion_common::ScalarValue;
+use datafusion_common::{exec_err, ScalarValue};
 use datafusion_expr_common::accumulator::Accumulator;
 use datafusion_physical_expr_common::binary_map::{ArrowBytesSet, OutputType};
 use datafusion_physical_expr_common::binary_view_map::ArrowBytesViewSet;
@@ -45,10 +45,14 @@ impl<O: OffsetSizeTrait> BytesDistinctCountAccumulator<O> {
 }
 
 impl<O: OffsetSizeTrait> Accumulator for BytesDistinctCountAccumulator<O> {
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state_mut(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let set = self.0.take();
         let arr = set.into_state();
         Ok(vec![SingleRowListArrayBuilder::new(arr).build_list_scalar()])
+    }
+
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
+        exec_err!("immutable state not supported for BytesDistinctCount")
     }
 
     fn update_batch(&mut self, values: &[ArrayRef]) -> datafusion_common::Result<()> {
@@ -80,7 +84,7 @@ impl<O: OffsetSizeTrait> Accumulator for BytesDistinctCountAccumulator<O> {
         })
     }
 
-    fn evaluate(&mut self) -> datafusion_common::Result<ScalarValue> {
+    fn evaluate(&self) -> datafusion_common::Result<ScalarValue> {
         Ok(ScalarValue::Int64(Some(self.0.non_null_len() as i64)))
     }
 
@@ -104,10 +108,14 @@ impl BytesViewDistinctCountAccumulator {
 }
 
 impl Accumulator for BytesViewDistinctCountAccumulator {
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state_mut(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let set = self.0.take();
         let arr = set.into_state();
         Ok(vec![SingleRowListArrayBuilder::new(arr).build_list_scalar()])
+    }
+
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
+        exec_err!("immutable state not suported for BytesViewDistinctCount")
     }
 
     fn update_batch(&mut self, values: &[ArrayRef]) -> datafusion_common::Result<()> {
@@ -139,7 +147,7 @@ impl Accumulator for BytesViewDistinctCountAccumulator {
         })
     }
 
-    fn evaluate(&mut self) -> datafusion_common::Result<ScalarValue> {
+    fn evaluate(&self) -> datafusion_common::Result<ScalarValue> {
         Ok(ScalarValue::Int64(Some(self.0.non_null_len() as i64)))
     }
 

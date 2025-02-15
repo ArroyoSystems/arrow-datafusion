@@ -201,7 +201,7 @@ impl Accumulator for StringAggAccumulator {
         self.array_agg_acc.update_batch(&filter_index(values, 1))
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         let scalar = self.array_agg_acc.evaluate()?;
 
         let ScalarValue::List(list) = scalar else {
@@ -244,7 +244,7 @@ impl Accumulator for StringAggAccumulator {
             + self.delimiter.capacity()
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         self.array_agg_acc.state()
     }
 

@@ -234,9 +234,7 @@ fn aggregate_batch(
                 AggregateMode::Partial
                 | AggregateMode::Single
                 | AggregateMode::SinglePartitioned => accum.update_batch(&values),
-                AggregateMode::Final | AggregateMode::FinalPartitioned | AggregateMode::CombinePartial => {
-                    accum.merge_batch(&values)
-                }
+                AggregateMode::Final | AggregateMode::FinalPartitioned | AggregateMode::CombinePartial => accum.merge_batch(&values),
             };
             let size_post = accum.size();
             allocated += size_post.saturating_sub(size_pre);

@@ -211,12 +211,21 @@ impl AggregateUDFImpl for Sum {
             )
             .into()])
         } else {
-            Ok(vec![Field::new(
+            let mut fields = vec![Field::new(
                 format_state_name(args.name, "sum"),
                 args.return_type().clone(),
                 true,
             )
-            .into()])
+            .into()];
+
+            if args.for_sliding {
+                fields.push(Field::new(
+                    format_state_name(args.name, "count"),
+                    DataType::UInt64,
+                    true,
+                ).into())
+            }
+            Ok(fields)
         }
     }
 
@@ -302,7 +311,7 @@ impl<T: ArrowNumericType> SumAccumulator<T> {
 }
 
 impl<T: ArrowNumericType> Accumulator for SumAccumulator<T> {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.evaluate()?])
     }
 
@@ -319,7 +328,7 @@ impl<T: ArrowNumericType> Accumulator for SumAccumulator<T> {
         self.update_batch(states)
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         ScalarValue::new_primitive::<T>(self.sum, &self.data_type)
     }
 
@@ -354,7 +363,7 @@ impl<T: ArrowNumericType> SlidingSumAccumulator<T> {
 }
 
 impl<T: ArrowNumericType> Accumulator for SlidingSumAccumulator<T> {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.evaluate()?, self.count.into()])
     }
 
@@ -378,7 +387,7 @@ impl<T: ArrowNumericType> Accumulator for SlidingSumAccumulator<T> {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         let v = (self.count != 0).then_some(self.sum);
         ScalarValue::new_primitive::<T>(v, &self.data_type)
     }
@@ -422,7 +431,7 @@ impl<T: ArrowPrimitiveType> DistinctSumAccumulator<T> {
 }
 
 impl<T: ArrowPrimitiveType> Accumulator for DistinctSumAccumulator<T> {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         // 1. Stores aggregate state in `ScalarValue::List`
         // 2. Constructs `ScalarValue::List` state from distinct numeric stored in hash set
         let state_out = {
@@ -468,7 +477,7 @@ impl<T: ArrowPrimitiveType> Accumulator for DistinctSumAccumulator<T> {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         let mut acc = T::Native::usize_as(0);
         for distinct_value in self.values.iter() {
             acc = acc.add_wrapping(distinct_value.0)

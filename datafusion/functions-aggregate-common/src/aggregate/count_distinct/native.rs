@@ -68,7 +68,7 @@ where
     T: ArrowPrimitiveType + Send + Debug,
     T::Native: Eq + Hash,
 {
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let arr = Arc::new(
             PrimitiveArray::<T>::from_iter_values(self.values.iter().cloned())
                 .with_data_type(self.data_type.clone()),
@@ -112,7 +112,7 @@ where
         })
     }
 
-    fn evaluate(&mut self) -> datafusion_common::Result<ScalarValue> {
+    fn evaluate(&self) -> datafusion_common::Result<ScalarValue> {
         Ok(ScalarValue::Int64(Some(self.values.len() as i64)))
     }
 
@@ -156,7 +156,7 @@ impl<T> Accumulator for FloatDistinctCountAccumulator<T>
 where
     T: ArrowPrimitiveType + Send + Debug,
 {
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let arr = Arc::new(PrimitiveArray::<T>::from_iter_values(
             self.values.iter().map(|v| v.0),
         )) as ArrayRef;
@@ -200,7 +200,7 @@ where
         })
     }
 
-    fn evaluate(&mut self) -> datafusion_common::Result<ScalarValue> {
+    fn evaluate(&self) -> datafusion_common::Result<ScalarValue> {
         Ok(ScalarValue::Int64(Some(self.values.len() as i64)))
     }
 

@@ -87,8 +87,7 @@ impl<'a> MetricBuilder<'a> {
 
     /// Consume self and create a metric of the specified value
     /// registered with the MetricsSet
-    pub fn build(self, _value: MetricValue) {
-    }
+    pub fn build(self, _value: MetricValue) {}
 
     /// Consume self and create a new counter for recording output rows
     pub fn output_rows(self, partition: usize) -> Count {

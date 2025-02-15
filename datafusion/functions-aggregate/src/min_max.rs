@@ -916,10 +916,10 @@ impl Accumulator for MaxAccumulator {
         self.update_batch(states)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.evaluate()?])
     }
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         Ok(self.max.clone())
     }
 
@@ -970,11 +970,11 @@ impl Accumulator for SlidingMaxAccumulator {
         self.update_batch(states)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.max.clone()])
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         Ok(self.max.clone())
     }
 
@@ -1210,7 +1210,7 @@ impl MinAccumulator {
 }
 
 impl Accumulator for MinAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.evaluate()?])
     }
 
@@ -1227,7 +1227,7 @@ impl Accumulator for MinAccumulator {
         self.update_batch(states)
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         Ok(self.min.clone())
     }
 
@@ -1252,7 +1252,7 @@ impl SlidingMinAccumulator {
 }
 
 impl Accumulator for SlidingMinAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.min.clone()])
     }
 
@@ -1286,7 +1286,7 @@ impl Accumulator for SlidingMinAccumulator {
         self.update_batch(states)
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         Ok(self.min.clone())
     }
 

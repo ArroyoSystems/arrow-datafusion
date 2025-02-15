@@ -59,7 +59,11 @@ pub trait Accumulator: Send + Sync + Debug {
     /// running sum.
     fn update_batch(&mut self, values: &[ArrayRef]) -> Result<()>;
 
-    /// Returns the final aggregate value, consuming the internal state.
+    /// Returns the final aggregate value, without modifying the internal state.
+    /// This method is safe to call multiple times.
+    fn evaluate(&self) -> Result<ScalarValue>;
+
+    /// Returns the final aggregate value, possibly consuming the internal state.
     ///
     /// For example, the `SUM` accumulator maintains a running sum,
     /// and `evaluate` will produce that running sum as its output.
@@ -70,7 +74,9 @@ pub trait Accumulator: Send + Sync + Debug {
     /// This function gets `&mut self` to allow for the accumulator to build
     /// arrow-compatible internal state that can be returned without copying
     /// when possible (for example distinct strings)
-    fn evaluate(&mut self) -> Result<ScalarValue>;
+    fn evaluate_mut(&mut self) -> Result<ScalarValue> {
+        self.evaluate()
+    }
 
     /// Returns the allocated size required for this accumulator, in
     /// bytes, including `Self`.
@@ -248,7 +254,13 @@ pub trait Accumulator: Send + Sync + Debug {
     ///           group values           group values
     ///           in partition 0         in partition 1
     /// ```
-    fn state(&mut self) -> Result<Vec<ScalarValue>>;
+    fn state_mut(&mut self) -> Result<Vec<ScalarValue>> {
+        self.state()
+    }
+
+    /// Returns the internal state without consuming it; this method is safe to
+    /// call multiple times
+    fn state(&self) -> Result<Vec<ScalarValue>>;
 
     /// Updates the accumulator's state from an `Array` containing one
     /// or more intermediate values.

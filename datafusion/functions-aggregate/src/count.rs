@@ -377,7 +377,7 @@ impl CountAccumulator {
 }
 
 impl Accumulator for CountAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![ScalarValue::Int64(Some(self.count))])
     }
 
@@ -402,7 +402,7 @@ impl Accumulator for CountAccumulator {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         Ok(ScalarValue::Int64(Some(self.count)))
     }
 
@@ -655,7 +655,7 @@ impl DistinctCountAccumulator {
 
 impl Accumulator for DistinctCountAccumulator {
     /// Returns the distinct values seen so far as (one element) ListArray.
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         let scalars = self.values.iter().cloned().collect::<Vec<_>>();
         let arr =
             ScalarValue::new_list_nullable(scalars.as_slice(), &self.state_data_type);
@@ -704,7 +704,7 @@ impl Accumulator for DistinctCountAccumulator {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         Ok(ScalarValue::Int64(Some(self.values.len() as i64)))
     }
 

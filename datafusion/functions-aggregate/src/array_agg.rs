@@ -226,11 +226,11 @@ impl Accumulator for ArrayAggAccumulator {
         Ok(())
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.evaluate()?])
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         // Transform Vec<ListArr> to ListArr
         let element_arrays: Vec<&dyn Array> =
             self.values.iter().map(|a| a.as_ref()).collect();
@@ -274,7 +274,7 @@ impl DistinctArrayAggAccumulator {
 }
 
 impl Accumulator for DistinctArrayAggAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.evaluate()?])
     }
 
@@ -309,7 +309,7 @@ impl Accumulator for DistinctArrayAggAccumulator {
             .try_for_each(|val| self.update_batch(&[val]))
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         let values: Vec<ScalarValue> = self.values.iter().cloned().collect();
         if values.is_empty() {
             return Ok(ScalarValue::new_null_list(self.datatype.clone(), true, 1));
@@ -457,14 +457,14 @@ impl Accumulator for OrderSensitiveArrayAggAccumulator {
         Ok(())
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         let mut result = vec![self.evaluate()?];
         result.push(self.evaluate_orderings()?);
 
         Ok(result)
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         if self.values.is_empty() {
             return Ok(ScalarValue::new_null_list(
                 self.datatypes[0].clone(),

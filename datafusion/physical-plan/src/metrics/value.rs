@@ -34,8 +34,7 @@ use datafusion_common::instant::Instant;
 ///
 /// Note `clone`ing counters update the same underlying metrics
 #[derive(Debug, Clone)]
-pub struct Count {
-}
+pub struct Count {}
 
 impl PartialEq for Count {
     fn eq(&self, other: &Self) -> bool {
@@ -58,13 +57,11 @@ impl Default for Count {
 impl Count {
     /// create a new counter
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     /// Add `n` to the metric's value
-    pub fn add(&self, _n: usize) {
-    }
+    pub fn add(&self, _n: usize) {}
 
     /// Get the current value
     pub fn value(&self) -> usize {
@@ -77,8 +74,7 @@ impl Count {
 ///
 /// Note `clone`ing gauge update the same underlying metrics
 #[derive(Debug, Clone)]
-pub struct Gauge {
-}
+pub struct Gauge {}
 
 impl PartialEq for Gauge {
     fn eq(&self, other: &Self) -> bool {
@@ -101,21 +97,17 @@ impl Default for Gauge {
 impl Gauge {
     /// create a new gauge
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     /// Add `n` to the metric's value
-    pub fn add(&self, _n: usize) {
-    }
+    pub fn add(&self, _n: usize) {}
 
     /// Sub `n` from the metric's value
-    pub fn sub(&self, _n: usize) {
-    }
+    pub fn sub(&self, _n: usize) {}
 
     /// Set metric's value to maximum of `n` and current value
-    pub fn set_max(&self, _n: usize) {
-    }
+    pub fn set_max(&self, _n: usize) {}
 
     /// Set the metric's value to `n` and return the previous value
     pub fn set(&self, _n: usize) -> usize {
@@ -130,8 +122,7 @@ impl Gauge {
 
 /// Measure a potentially non contiguous duration of time
 #[derive(Debug, Clone)]
-pub struct Time {
-}
+pub struct Time {}
 
 impl Default for Time {
     fn default() -> Self {
@@ -156,13 +147,11 @@ impl Time {
     /// Create a new [`Time`] wrapper suitable for recording elapsed
     /// times for operations.
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     /// Add elapsed nanoseconds since `start`to self
-    pub fn add_elapsed(&self, _start: Instant) {
-    }
+    pub fn add_elapsed(&self, _start: Instant) {}
 
     /// Add duration of time to self
     ///
@@ -174,12 +163,10 @@ impl Time {
     /// This is based on the assumption that the timing logic in most cases is likely
     /// to take at least a nanosecond, and so this is reasonable mechanism to avoid
     /// ambiguity, especially on systems with low-resolution monotonic clocks
-    pub fn add_duration(&self, _duration: Duration) {
-    }
+    pub fn add_duration(&self, _duration: Duration) {}
 
     /// Add the number of nanoseconds of other `Time` to self
-    pub fn add(&self, _other: &Time) {
-    }
+    pub fn add(&self, _other: &Time) {}
 
     /// return a scoped guard that adds the amount of time elapsed
     /// between its creation and its drop or call to `stop` to the
@@ -200,8 +187,7 @@ impl Time {
 /// Stores a single timestamp, stored as the number of nanoseconds
 /// elapsed from Jan 1, 1970 UTC
 #[derive(Debug, Clone)]
-pub struct Timestamp {
-}
+pub struct Timestamp {}
 
 impl Default for Timestamp {
     fn default() -> Self {
@@ -212,8 +198,7 @@ impl Default for Timestamp {
 impl Timestamp {
     /// Create a new timestamp and sets its value to 0
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     /// Sets the timestamps value to the current time
@@ -222,8 +207,7 @@ impl Timestamp {
     }
 
     /// Sets the timestamps value to a specified time
-    pub fn set(&self, _now: DateTime<Utc>) {
-    }
+    pub fn set(&self, _now: DateTime<Utc>) {}
 
     /// return the timestamps value at the last time `record()` was
     /// called.
@@ -234,12 +218,10 @@ impl Timestamp {
     }
 
     /// sets the value of this timestamp to the minimum of this and other
-    pub fn update_to_min(&self, _other: &Timestamp) {
-    }
+    pub fn update_to_min(&self, _other: &Timestamp) {}
 
     /// sets the value of this timestamp to the maximum of this and other
-    pub fn update_to_max(&self, _other: &Timestamp) {
-    }
+    pub fn update_to_max(&self, _other: &Timestamp) {}
 }
 
 impl PartialEq for Timestamp {

@@ -284,6 +284,21 @@ impl AggregateFunctionExpr {
             return_type: &self.data_type,
             ordering_fields: &self.ordering_fields,
             is_distinct: self.is_distinct,
+            for_sliding: false,
+        };
+
+        self.fun.state_fields(args)
+    }
+
+    /// state fields for the sliding version of this aggregation, if one is supported
+    pub fn sliding_state_fields(&self) -> Result<Vec<Field>> {
+        let args = StateFieldsArgs {
+            name: &self.name,
+            input_types: &self.input_types,
+            return_type: &self.data_type,
+            ordering_fields: &self.ordering_fields,
+            is_distinct: self.is_distinct,
+            for_sliding: true,
         };
 
         self.fun.state_fields(args)

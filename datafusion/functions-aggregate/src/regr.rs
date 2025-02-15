@@ -401,7 +401,7 @@ impl RegrAccumulator {
 }
 
 impl Accumulator for RegrAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![
             ScalarValue::from(self.count),
             ScalarValue::from(self.mean_x),
@@ -572,7 +572,7 @@ impl Accumulator for RegrAccumulator {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         let cov_pop_x_y = self.algo_const / self.count as f64;
         let var_pop_x = self.m2_x / self.count as f64;
         let var_pop_y = self.m2_y / self.count as f64;

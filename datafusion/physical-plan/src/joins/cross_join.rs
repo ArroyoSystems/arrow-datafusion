@@ -20,8 +20,7 @@
 
 use super::utils::{
     adjust_right_output_partitioning, BatchSplitter, BatchTransformer,
-    BuildProbeJoinMetrics, NoopBatchTransformer, OnceFut,
-    StatefulStreamResult,
+    BuildProbeJoinMetrics, NoopBatchTransformer, OnceFut, StatefulStreamResult,
 };
 use crate::coalesce_partitions::CoalescePartitionsExec;
 use crate::metrics::{ExecutionPlanMetricsSet, MetricsSet};

@@ -295,7 +295,7 @@ impl FirstValueAccumulator {
 }
 
 impl Accumulator for FirstValueAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         let mut result = vec![self.first.clone()];
         result.extend(self.orderings.iter().cloned());
         result.push(ScalarValue::Boolean(Some(self.is_set)));
@@ -363,7 +363,7 @@ impl Accumulator for FirstValueAccumulator {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         Ok(self.first.clone())
     }
 
@@ -468,6 +468,7 @@ impl AggregateUDFImpl for LastValue {
             return_type: _,
             ordering_fields,
             is_distinct: _,
+            for_sliding: _,
         } = args;
         let mut fields = vec![Field::new(
             format_state_name(name, "last_value"),
@@ -627,7 +628,7 @@ impl LastValueAccumulator {
 }
 
 impl Accumulator for LastValueAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         let mut result = vec![self.last.clone()];
         result.extend(self.orderings.clone());
         result.push(ScalarValue::Boolean(Some(self.is_set)));
@@ -698,7 +699,7 @@ impl Accumulator for LastValueAccumulator {
         Ok(())
     }
 
-    fn evaluate(&mut self) -> Result<ScalarValue> {
+    fn evaluate(&self) -> Result<ScalarValue> {
         Ok(self.last.clone())
     }
 

@@ -18,12 +18,12 @@
 use arrow::array::StructArray;
 use arrow::datatypes::{DataType, Field, Fields};
 use datafusion_common::{exec_err, internal_err, Result, ScalarValue};
+use datafusion_expr::scalar_doc_sections::DOC_SECTION_STRUCT;
 use datafusion_expr::{ColumnarValue, Documentation, Expr, ExprSchemable};
 use datafusion_expr::{ScalarUDFImpl, Signature, Volatility};
 use std::any::Any;
 use std::collections::HashSet;
 use std::sync::{Arc, OnceLock};
-use datafusion_expr::scalar_doc_sections::DOC_SECTION_STRUCT;
 
 /// put values in a struct array.
 fn named_struct_expr(args: &[ColumnarValue]) -> Result<ColumnarValue> {
@@ -41,7 +41,9 @@ fn named_struct_expr(args: &[ColumnarValue]) -> Result<ColumnarValue> {
         );
     }
 
-    let all_scalar = args.iter().all(|arg| matches!(arg, ColumnarValue::Scalar(_)));
+    let all_scalar = args
+        .iter()
+        .all(|arg| matches!(arg, ColumnarValue::Scalar(_)));
 
     let (names, values): (Vec<_>, Vec<_>) = args
         .chunks_exact(2)

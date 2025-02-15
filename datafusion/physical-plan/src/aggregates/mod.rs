@@ -108,7 +108,9 @@ impl AggregateMode {
             AggregateMode::Partial
             | AggregateMode::Single
             | AggregateMode::SinglePartitioned => true,
-            AggregateMode::Final | AggregateMode::FinalPartitioned | AggregateMode::CombinePartial => false,
+            AggregateMode::Final
+            | AggregateMode::FinalPartitioned
+            | AggregateMode::CombinePartial => false,
         }
     }
 }
@@ -1113,7 +1115,9 @@ pub fn aggregate_expressions(
             })
             .collect()),
         // In this mode, we build the merge expressions of the aggregation.
-        AggregateMode::Final | AggregateMode::FinalPartitioned | AggregateMode::CombinePartial => {
+        AggregateMode::Final
+        | AggregateMode::FinalPartitioned
+        | AggregateMode::CombinePartial => {
             let mut col_idx_base = col_idx_base;
             aggr_expr
                 .iter()

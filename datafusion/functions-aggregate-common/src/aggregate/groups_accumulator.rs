@@ -325,9 +325,9 @@ impl GroupsAccumulator for GroupsAccumulatorAdapter {
 
         let results: Vec<ScalarValue> = states
             .into_iter()
-            .map(|state| {
+            .map(|mut state| {
                 self.free_allocation(state.size());
-                state.accumulator.evaluate()
+                state.accumulator.evaluate_mut()
             })
             .collect::<Result<_>>()?;
 
@@ -408,7 +408,7 @@ impl GroupsAccumulator for GroupsAccumulatorAdapter {
         // If there are no rows, return empty arrays
         if num_rows == 0 {
             // create empty accumulator to get the state types
-            let empty_state = (self.factory)()?.state()?;
+            let empty_state = (self.factory)()?.state_mut()?;
             let empty_arrays = empty_state
                 .into_iter()
                 .map(|state_val| new_empty_array(&state_val.data_type()))
@@ -427,7 +427,7 @@ impl GroupsAccumulator for GroupsAccumulatorAdapter {
             let values_to_accumulate =
                 slice_and_maybe_filter(values, opt_filter, &[row_idx, row_idx + 1])?;
             converted_accumulator.update_batch(&values_to_accumulate)?;
-            let states = converted_accumulator.state()?;
+            let states = converted_accumulator.state_mut()?;
 
             // Resize results to have enough columns according to the converted states
             results.resize_with(states.len(), || Vec::with_capacity(num_rows));

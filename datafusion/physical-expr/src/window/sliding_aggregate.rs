@@ -207,7 +207,7 @@ impl AggregateWindowExpr for SlidingAggregateWindowExpr {
                     .collect();
                 accumulator.retract_batch(&retract)?
             }
-            accumulator.evaluate()
+            accumulator.evaluate_mut()
         }
     }
 }

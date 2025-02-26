@@ -210,7 +210,7 @@ impl AggregateWindowExpr for PlainAggregateWindowExpr {
                     .collect();
                 accumulator.update_batch(&update)?
             }
-            accumulator.evaluate()
+            accumulator.evaluate_mut()
         }
     }
 }

@@ -37,7 +37,7 @@ pub fn get_accum_scalar_values_as_arrays(
     accum: &mut dyn Accumulator,
 ) -> Result<Vec<ArrayRef>> {
     accum
-        .state()?
+        .state_mut()?
         .iter()
         .map(|s| s.to_array_of_size(1))
         .collect()

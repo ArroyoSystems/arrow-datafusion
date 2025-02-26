@@ -193,11 +193,11 @@ pub(crate) fn get_col_stats(
     (0..schema.fields().len())
         .map(|i| {
             let max_value = match max_values.get_mut(i).unwrap() {
-                Some(max_value) => max_value.evaluate().ok(),
+                Some(max_value) => max_value.evaluate_mut().ok(),
                 None => None,
             };
             let min_value = match min_values.get_mut(i).unwrap() {
-                Some(min_value) => min_value.evaluate().ok(),
+                Some(min_value) => min_value.evaluate_mut().ok(),
                 None => None,
             };
             ColumnStatistics {

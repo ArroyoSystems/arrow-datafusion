@@ -152,6 +152,7 @@ fn calc_inline_constraints_from_columns(columns: &[ColumnDef]) -> Vec<TableConst
                 | ast::ColumnOption::OnUpdate(_)
                 | ast::ColumnOption::Materialized(_)
                 | ast::ColumnOption::Ephemeral(_)
+                | ast::ColumnOption::MetadataField(_)
                 | ast::ColumnOption::Alias(_) => {}
             }
         }
@@ -1354,6 +1355,9 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
                 }
                 TableConstraint::FulltextOrSpatial { .. } => {
                     _plan_err!("Indexes are not currently supported")
+                }
+                c => {
+                    _plan_err!("Unhandled table constraint {}", c)
                 }
             })
             .collect::<Result<Vec<_>>>()?;

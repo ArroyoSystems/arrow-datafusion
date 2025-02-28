@@ -566,7 +566,7 @@ fn roundtrip_aggregate_udaf() -> Result<()> {
     #[derive(Debug)]
     struct Example;
     impl Accumulator for Example {
-        fn state(&mut self) -> Result<Vec<ScalarValue>> {
+        fn state(&self) -> Result<Vec<ScalarValue>> {
             Ok(vec![ScalarValue::Int64(Some(0))])
         }
 
@@ -578,7 +578,7 @@ fn roundtrip_aggregate_udaf() -> Result<()> {
             Ok(())
         }
 
-        fn evaluate(&mut self) -> Result<ScalarValue> {
+        fn evaluate(&self) -> Result<ScalarValue> {
             Ok(ScalarValue::Int64(Some(0)))
         }
 

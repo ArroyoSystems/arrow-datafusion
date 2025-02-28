@@ -79,6 +79,10 @@ impl<O: OffsetSizeTrait> ArrowBytesSet<O> {
         self.0.into_state()
     }
 
+    pub fn as_state(&self) -> ArrayRef {
+        self.0.as_state()
+    }
+
     /// Returns the total number of distinct values (including nulls) seen so far
     pub fn len(&self) -> usize {
         self.0.len()
@@ -525,6 +529,59 @@ where
             _ => unreachable!("View types should use `ArrowBytesViewMap`"),
         }
     }
+
+    /// Converts this set into a `StringArray`, `LargeStringArray`,
+    /// `BinaryArray`, or `LargeBinaryArray` containing each distinct value
+    /// that was inserted. This is done without copying the values.
+    ///
+    /// The values are guaranteed to be returned in the same order in which
+    /// they were first seen.
+    pub fn as_state(&self) -> ArrayRef {
+        let Self {
+            output_type,
+            map: _,
+            map_size: _,
+            offsets,
+            buffer,
+            random_state: _,
+            hashes_buffer: _,
+            null,
+        } = self;
+
+        // Only make a `NullBuffer` if there was a null value
+        let nulls = null.map(|(_payload, null_index)| {
+            let num_values = offsets.len() - 1;
+            single_null_buffer(num_values, null_index)
+        });
+        // SAFETY: the offsets were constructed correctly in `insert_if_new` --
+        // monotonically increasing, overflows were checked.
+        let offsets = unsafe { OffsetBuffer::new_unchecked(ScalarBuffer::from(offsets.clone())) };
+
+
+        let values = buffer.as_slice().iter().map(|b| *b).collect();
+
+        match output_type {
+            OutputType::Binary => {
+                // SAFETY: the offsets were constructed correctly
+                Arc::new(unsafe {
+                    GenericBinaryArray::new_unchecked(offsets, values, nulls)
+                })
+            }
+            OutputType::Utf8 => {
+                // SAFETY:
+                // 1. the offsets were constructed safely
+                //
+                // 2. we asserted the input arrays were all the correct type and
+                // thus since all the values that went in were valid (e.g. utf8)
+                // so are all the values that come out
+                Arc::new(unsafe {
+                    GenericStringArray::new_unchecked(offsets, values, nulls)
+                })
+            }
+            _ => unreachable!("View types should use `ArrowBytesViewMap`"),
+        }
+    }
+
 
     /// Total number of entries (including null, if present)
     pub fn len(&self) -> usize {

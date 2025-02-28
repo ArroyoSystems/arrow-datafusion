@@ -499,7 +499,7 @@ mod tests {
 
     fn merge(
         mut acc1: Box<dyn Accumulator>,
-        mut acc2: Box<dyn Accumulator>,
+        acc2: Box<dyn Accumulator>,
     ) -> Result<Box<dyn Accumulator>> {
         let intermediate_state = acc2.state().and_then(|e| {
             e.iter()

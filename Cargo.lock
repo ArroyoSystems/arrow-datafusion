@@ -5937,8 +5937,7 @@ dependencies = [
 [[package]]
 name = "sqlparser"
 version = "0.55.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4521174166bac1ff04fe16ef4524c70144cd29682a45978978ca3d7f4e0be11"
+source = "git+https://github.com/ArroyoSystems/sqlparser-rs?branch=0.55.0/arroyo#5a0b3e5972bf4443d89f6c53779a17ffcbd08547"
 dependencies = [
  "log",
  "recursive",
@@ -5948,8 +5947,7 @@ dependencies = [
 [[package]]
 name = "sqlparser_derive"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da5fc6819faabb412da764b99d3b713bb55083c11e7e0c00144d386cd6a1939c"
+source = "git+https://github.com/ArroyoSystems/sqlparser-rs?branch=0.55.0/arroyo#5a0b3e5972bf4443d89f6c53779a17ffcbd08547"
 dependencies = [
  "proc-macro2",
  "quote",

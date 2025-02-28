@@ -345,7 +345,7 @@ async fn udaf_as_window_func() -> Result<()> {
     struct MyAccumulator;
 
     impl Accumulator for MyAccumulator {
-        fn state(&mut self) -> Result<Vec<ScalarValue>> {
+        fn state(&self) -> Result<Vec<ScalarValue>> {
             unimplemented!()
         }
 
@@ -357,7 +357,7 @@ async fn udaf_as_window_func() -> Result<()> {
             unimplemented!()
         }
 
-        fn evaluate(&mut self) -> Result<ScalarValue> {
+        fn evaluate(&self) -> Result<ScalarValue> {
             unimplemented!()
         }
 

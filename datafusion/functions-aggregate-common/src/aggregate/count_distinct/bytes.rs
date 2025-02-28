@@ -52,7 +52,8 @@ impl<O: OffsetSizeTrait> Accumulator for BytesDistinctCountAccumulator<O> {
     }
 
     fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
-        exec_err!("immutable state not supported for BytesDistinctCount")
+        let arr = self.0.as_state();
+        Ok(vec![SingleRowListArrayBuilder::new(arr).build_list_scalar()])
     }
 
     fn update_batch(&mut self, values: &[ArrayRef]) -> datafusion_common::Result<()> {

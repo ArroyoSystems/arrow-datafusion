@@ -285,6 +285,14 @@ impl ExecutionPlan for ForeignExecutionPlan {
                 .map(|stream| Pin::new(Box::new(stream)) as SendableRecordBatchStream)
         }
     }
+
+    fn reset(&self) -> Result<()> {
+        for c in &self.children {
+            c.reset()?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -299,6 +299,11 @@ impl ExecutionPlan for WindowAggExec {
             Ok(Statistics::new_unknown(&self.schema()))
         }
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// Compute the window aggregate columns

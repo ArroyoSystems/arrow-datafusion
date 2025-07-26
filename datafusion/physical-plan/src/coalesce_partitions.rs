@@ -248,6 +248,11 @@ impl ExecutionPlan for CoalescePartitionsExec {
             cache: self.cache.clone(),
         }))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 #[cfg(test)]

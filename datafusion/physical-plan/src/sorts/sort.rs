@@ -1237,6 +1237,11 @@ impl ExecutionPlan for SortExec {
                 .with_preserve_partitioning(self.preserve_partitioning()),
         )))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics_set.reset();
+        self.input.reset()
+    }
 }
 
 #[cfg(test)]
@@ -1339,6 +1344,10 @@ mod tests {
                 batch_size: self.batch_size,
                 offset: 0,
             }))
+        }
+
+        fn reset(&self) -> Result<()> {
+            Ok(())
         }
     }
 

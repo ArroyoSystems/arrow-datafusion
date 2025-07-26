@@ -546,6 +546,10 @@ pub trait ExecutionPlan: Debug + DisplayAs + Send + Sync {
             child_pushdown_result,
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// [`ExecutionPlan`] Invariant Level
@@ -1222,6 +1226,10 @@ mod tests {
         fn partition_statistics(&self, _partition: Option<usize>) -> Result<Statistics> {
             unimplemented!()
         }
+
+        fn reset(&self) -> Result<()> {
+            Ok(())
+        }
     }
 
     #[derive(Debug)]
@@ -1288,6 +1296,10 @@ mod tests {
 
         fn partition_statistics(&self, _partition: Option<usize>) -> Result<Statistics> {
             unimplemented!()
+        }
+
+        fn reset(&self) -> Result<()> {
+            Ok(())
         }
     }
 

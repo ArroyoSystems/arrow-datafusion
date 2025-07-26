@@ -182,6 +182,10 @@ impl ExecutionPlan for PlaceholderRowExec {
             None,
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

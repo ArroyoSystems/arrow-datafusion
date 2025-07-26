@@ -343,6 +343,7 @@ pub fn build_join_schema(
 ///
 /// Each output partition waits on the same `OnceAsync` before proceeding.
 pub(crate) struct OnceAsync<T> {
+    #[allow(dead_code)]
     fut: Mutex<Option<SharedResult<OnceFut<T>>>>,
 }
 
@@ -368,6 +369,7 @@ impl<T: 'static> OnceAsync<T> {
     /// If this is not the first call, will return a [`OnceFut`] referring
     /// to the same future as was returned by the first call - or the same
     /// error if the initial call to `f` failed.
+    #[allow(dead_code)]
     pub(crate) fn try_once<F, Fut>(&self, f: F) -> Result<OnceFut<T>>
     where
         F: FnOnce() -> Result<Fut>,

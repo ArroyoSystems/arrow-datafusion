@@ -173,6 +173,10 @@ impl ExecutionPlan for EmptyExec {
             None,
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

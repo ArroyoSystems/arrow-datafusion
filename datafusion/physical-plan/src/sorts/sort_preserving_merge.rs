@@ -382,6 +382,11 @@ impl ExecutionPlan for SortPreservingMergeExec {
             .with_fetch(self.fetch()),
         )))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 #[cfg(test)]
@@ -1376,6 +1381,10 @@ mod tests {
                 congestion_cleared: Arc::clone(&self.congestion_cleared),
                 partition,
             }))
+        }
+
+        fn reset(&self) -> Result<()> {
+            Ok(())
         }
     }
 

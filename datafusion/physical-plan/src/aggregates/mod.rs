@@ -1021,6 +1021,11 @@ impl ExecutionPlan for AggregateExec {
     fn cardinality_effect(&self) -> CardinalityEffect {
         CardinalityEffect::LowerEqual
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 fn create_schema(
@@ -1968,6 +1973,10 @@ mod tests {
                 &self.schema(),
                 None,
             ))
+        }
+
+        fn reset(&self) -> Result<()> {
+            Ok(())
         }
     }
 

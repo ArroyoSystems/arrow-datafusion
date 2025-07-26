@@ -256,6 +256,10 @@ impl ExecutionPlan for OutputRequirementExec {
             })
             .map(|e| Some(Arc::new(e) as _))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.input.reset()
+    }
 }
 
 impl PhysicalOptimizerRule for OutputRequirements {

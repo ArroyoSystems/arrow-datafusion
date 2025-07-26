@@ -276,6 +276,11 @@ impl ExecutionPlan for ProjectionExec {
             Ok(Some(Arc::new(projection.clone())))
         }
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 fn stats_projection(

@@ -698,7 +698,6 @@ impl DisplayAs for TopKExec {
     }
 }
 
-#[async_trait]
 impl ExecutionPlan for TopKExec {
     fn name(&self) -> &'static str {
         Self::static_name()
@@ -750,6 +749,10 @@ impl ExecutionPlan for TopKExec {
         // to improve the optimizability of this plan
         // better statistics inference could be provided
         Ok(Statistics::new_unknown(&self.schema()))
+    }
+
+    fn reset(&self) -> Result<()> {
+        self.input.reset()
     }
 }
 

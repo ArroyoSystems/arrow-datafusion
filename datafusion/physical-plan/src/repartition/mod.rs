@@ -823,6 +823,11 @@ impl ExecutionPlan for RepartitionExec {
             child_pushdown_result,
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 impl RepartitionExec {

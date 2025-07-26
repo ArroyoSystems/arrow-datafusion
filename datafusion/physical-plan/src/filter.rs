@@ -578,6 +578,11 @@ impl ExecutionPlan for FilterExec {
             updated_node,
         })
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 impl EmbeddedProjection for FilterExec {

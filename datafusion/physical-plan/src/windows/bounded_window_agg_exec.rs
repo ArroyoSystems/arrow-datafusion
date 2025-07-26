@@ -367,6 +367,11 @@ impl ExecutionPlan for BoundedWindowAggExec {
         let input_stat = self.input.partition_statistics(partition)?;
         self.statistics_helper(input_stat)
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// Trait that specifies how we search for (or calculate) partitions. It has two

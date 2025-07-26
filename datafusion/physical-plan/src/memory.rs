@@ -273,6 +273,11 @@ impl ExecutionPlan for LazyMemoryExec {
     fn statistics(&self) -> Result<Statistics> {
         Ok(Statistics::new_unknown(&self.schema))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        Ok(())
+    }
 }
 
 /// Stream that generates record batches on demand

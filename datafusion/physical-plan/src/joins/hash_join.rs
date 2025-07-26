@@ -29,7 +29,7 @@ use super::utils::{
     reorder_output_after_swap, swap_join_projection,
 };
 use super::{
-    utils::{OnceAsync, OnceFut},
+    utils::{OnceFut},
     PartitionMode, SharedBitmapBuilder,
 };
 use super::{JoinOn, JoinOnRef};
@@ -336,13 +336,6 @@ pub struct HashJoinExec {
     /// The schema after join. Please be careful when using this schema,
     /// if there is a projection, the schema isn't the same as the output schema.
     join_schema: SchemaRef,
-    /// Future that consumes left input and builds the hash table
-    ///
-    /// For CollectLeft partition mode, this structure is *shared* across all output streams.
-    ///
-    /// Each output stream waits on the `OnceAsync` to signal the completion of
-    /// the hash table creation.
-    left_fut: OnceAsync<JoinLeftData>,
     /// Shared the `RandomState` for the hashing algorithm
     random_state: RandomState,
     /// Partitioning mode to use
@@ -413,7 +406,6 @@ impl HashJoinExec {
             filter,
             join_type: *join_type,
             join_schema,
-            left_fut: Default::default(),
             random_state,
             mode: partition_mode,
             metrics: ExecutionPlanMetricsSet::new(),
@@ -804,13 +796,13 @@ impl ExecutionPlan for HashJoinExec {
 
         let join_metrics = BuildProbeJoinMetrics::new(partition, &self.metrics);
         let left_fut = match self.mode {
-            PartitionMode::CollectLeft => self.left_fut.try_once(|| {
+            PartitionMode::CollectLeft => {
                 let left_stream = self.left.execute(0, Arc::clone(&context))?;
 
                 let reservation =
                     MemoryConsumer::new("HashJoinInput").register(context.memory_pool());
 
-                Ok(collect_left_input(
+                OnceFut::new(collect_left_input(
                     self.random_state.clone(),
                     left_stream,
                     on_left.clone(),
@@ -819,7 +811,7 @@ impl ExecutionPlan for HashJoinExec {
                     need_produce_result_in_final(self.join_type),
                     self.right().output_partitioning().partition_count(),
                 ))
-            })?,
+            },
             PartitionMode::Partitioned => {
                 let left_stream = self.left.execute(partition, Arc::clone(&context))?;
 

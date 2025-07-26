@@ -245,6 +245,11 @@ impl ExecutionPlan for CoalesceBatchesExec {
             child_pushdown_result,
         ))
     }
+
+    fn reset(&self) -> Result<()> {
+        self.metrics.reset();
+        self.input.reset()
+    }
 }
 
 /// Stream for [`CoalesceBatchesExec`]. See [`CoalesceBatchesExec`] for more details.

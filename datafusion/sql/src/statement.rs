@@ -213,6 +213,7 @@ fn calc_inline_constraints_from_columns(columns: &[ColumnDef]) -> Vec<TableConst
                 | ast::ColumnOption::Alias(_)
                 | ast::ColumnOption::Srid(_)
                 | ast::ColumnOption::Collation(_)
+                | ast::ColumnOption::MetadataField(_, _)
                 | ast::ColumnOption::Invisible => {}
             }
         }
@@ -350,6 +351,7 @@ impl<S: ContextProvider> SqlToRel<'_, S> {
                 distkey,
                 sortkey,
                 backup,
+                arroyo_partitions: _,
             }) => {
                 if temporary {
                     return not_impl_err!("Temporary tables not supported");
@@ -1963,6 +1965,9 @@ impl<S: ContextProvider> SqlToRel<'_, S> {
                     _plan_err!(
                         "UNIQUE USING INDEX constraints are not currently supported"
                     )
+                }
+                TableConstraint::Watermark { .. } => {
+                    _plan_err!("Unhandled table constraint {c}")
                 }
             })
             .collect::<Result<Vec<_>>>()?;

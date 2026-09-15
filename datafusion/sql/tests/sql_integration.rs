@@ -57,7 +57,7 @@ use datafusion_functions_window::{rank::rank_udwf, row_number::row_number_udwf};
 use insta::{allow_duplicates, assert_snapshot};
 use rstest::rstest;
 use sqlparser::dialect::{
-    DatabricksDialect, Dialect, GenericDialect, HiveDialect, MySqlDialect,
+    ArroyoDialect, DatabricksDialect, Dialect, GenericDialect, HiveDialect, MySqlDialect,
 };
 use sqlparser::parser::Parser;
 
@@ -552,6 +552,61 @@ fn plan_create_table_check_constraint() {
       EmptyRelation: rows=0
     "#
     );
+}
+
+#[test]
+fn arroyo_metadata_preserves_schema_and_constraints() {
+    let sql = r#"CREATE TABLE events (
+        id INT PRIMARY KEY,
+        topic TEXT METADATA FROM 'topic',
+        offset_id BIGINT NOT NULL METADATA FROM 'offset'
+    )"#;
+    let ordinary_sql = r#"CREATE TABLE events (
+        id INT PRIMARY KEY,
+        topic TEXT,
+        offset_id BIGINT NOT NULL
+    )"#;
+    for dialect in [&ArroyoDialect {} as &dyn Dialect, &GenericDialect {}] {
+        assert_eq!(
+            logical_plan_with_dialect(sql, dialect).unwrap(),
+            logical_plan_with_dialect(ordinary_sql, dialect).unwrap()
+        );
+    }
+}
+
+#[test]
+fn arroyo_watermarks_remain_unsupported_by_datafusion() {
+    for constraint in ["WATERMARK FOR ts", "WATERMARK FOR ts AS ts"] {
+        let sql = format!("CREATE TABLE events (ts TIMESTAMP, {constraint})");
+        let err = logical_plan_with_dialect(&sql, &ArroyoDialect {}).unwrap_err();
+        assert_eq!(
+            err.strip_backtrace(),
+            format!("Error during planning: Unhandled table constraint {constraint}")
+        );
+    }
+}
+
+#[test]
+fn arroyo_connector_partitions_remain_owned_by_arroyo() {
+    let sql = r#"CREATE TABLE sink (id INT)
+        WITH (connector = 'iceberg') PARTITIONED BY (bucket(32, id))"#;
+    let mut statements =
+        DFParser::parse_sql_with_dialect(sql, &ArroyoDialect {}).unwrap();
+    let datafusion_sql::parser::Statement::Statement(statement) =
+        statements.pop_front().unwrap()
+    else {
+        panic!("expected a SQL statement");
+    };
+    let sqlparser::ast::Statement::CreateTable(table) = statement.as_ref() else {
+        panic!("expected CREATE TABLE");
+    };
+    assert_eq!(
+        table.arroyo_partitions.as_ref().unwrap()[0].to_string(),
+        "bucket(32, id)"
+    );
+    // Parsing the extension must not make DataFusion claim connector support.
+    let err = logical_plan_with_dialect(sql, &ArroyoDialect {}).unwrap_err();
+    assert!(matches!(err, DataFusionError::NotImplemented(_)));
 }
 
 #[test]

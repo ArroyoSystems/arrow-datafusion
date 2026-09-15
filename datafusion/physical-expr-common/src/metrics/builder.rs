@@ -17,16 +17,14 @@
 
 //! Builder for creating arbitrary metrics
 
-use std::{borrow::Cow, sync::Arc};
+use std::borrow::Cow;
 
 use crate::metrics::{
     MetricCategory, MetricType,
     value::{PruningMetrics, RatioMergeStrategy, RatioMetrics},
 };
 
-use super::{
-    Count, ExecutionPlanMetricsSet, Gauge, Label, Metric, MetricValue, Time, Timestamp,
-};
+use super::{Count, ExecutionPlanMetricsSet, Gauge, Label, MetricValue, Time, Timestamp};
 
 /// Structure for constructing metrics, counters, timers, etc.
 ///
@@ -49,7 +47,7 @@ use super::{
 /// ```
 pub struct MetricBuilder<'a> {
     /// Location that the metric created by this builder will be added do
-    metrics: &'a ExecutionPlanMetricsSet,
+    _metrics: &'a ExecutionPlanMetricsSet,
 
     /// optional partition number
     partition: Option<usize>,
@@ -73,7 +71,7 @@ impl<'a> MetricBuilder<'a> {
     /// [`MetricType`] for details.
     pub fn new(metrics: &'a ExecutionPlanMetricsSet) -> Self {
         Self {
-            metrics,
+            _metrics: metrics,
             partition: None,
             labels: vec![],
             metric_type: MetricType::Dev,
@@ -119,21 +117,7 @@ impl<'a> MetricBuilder<'a> {
 
     /// Consume self and create a metric of the specified value
     /// registered with the MetricsSet
-    pub fn build(self, value: MetricValue) {
-        let Self {
-            labels,
-            partition,
-            metrics,
-            metric_type,
-            metric_category,
-        } = self;
-        let mut metric =
-            Metric::new_with_labels(value, partition, labels).with_type(metric_type);
-        if let Some(category) = metric_category {
-            metric = metric.with_category(category);
-        }
-        metrics.register(Arc::new(metric));
-    }
+    pub fn build(self, _value: MetricValue) {}
 
     /// Consume self and create a new counter for recording output rows
     pub fn output_rows(self, partition: usize) -> Count {

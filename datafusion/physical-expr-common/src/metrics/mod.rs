@@ -62,14 +62,14 @@ pub use value::{
 /// let partition = 1;
 /// let output_rows = MetricBuilder::new(&metrics).output_rows(partition);
 ///
-/// // Counter can be incremented
+/// // Metrics are disabled in the Arroyo fork, so updates are no-ops
 /// output_rows.add(13);
 ///
 /// // The value can be retrieved directly:
-/// assert_eq!(output_rows.value(), 13);
+/// assert_eq!(output_rows.value(), 0);
 ///
-/// // As well as from the metrics set
-/// assert_eq!(metrics.clone_inner().output_rows(), Some(13));
+/// // Disabled metrics are not registered in the metrics set
+/// assert_eq!(metrics.clone_inner().output_rows(), None);
 /// ```
 
 #[derive(Debug)]
@@ -489,8 +489,8 @@ impl ExecutionPlanMetricsSet {
     }
 
     /// Add the specified metric to the underlying metric set
-    pub fn register(&self, metric: Arc<Metric>) {
-        self.inner.lock().push(metric)
+    pub fn register(&self, _metric: Arc<Metric>) {
+        // self.inner.lock().push(metric)
     }
 
     /// Return a clone of the inner [`MetricsSet`]
@@ -571,7 +571,7 @@ mod tests {
         let partition = None;
         let metric = Metric::new(value, partition);
 
-        assert_eq!("output_rows=33", metric.to_string())
+        assert_eq!("output_rows=0", metric.to_string())
     }
 
     #[test]
@@ -582,7 +582,7 @@ mod tests {
         let partition = Some(1);
         let metric = Metric::new(value, partition);
 
-        assert_eq!("output_rows{partition=1}=44", metric.to_string())
+        assert_eq!("output_rows{partition=1}=0", metric.to_string())
     }
 
     #[test]
@@ -594,7 +594,7 @@ mod tests {
         let label = Label::new("foo", "bar");
         let metric = Metric::new_with_labels(value, partition, vec![label]);
 
-        assert_eq!("output_rows{foo=bar}=55", metric.to_string())
+        assert_eq!("output_rows{foo=bar}=0", metric.to_string())
     }
 
     #[test]
@@ -606,7 +606,7 @@ mod tests {
         let label = Label::new("foo", "bar");
         let metric = Metric::new_with_labels(value, partition, vec![label]);
 
-        assert_eq!("output_rows{partition=2, foo=bar}=66", metric.to_string())
+        assert_eq!("output_rows{partition=2, foo=bar}=0", metric.to_string())
     }
 
     #[test]
@@ -620,7 +620,7 @@ mod tests {
 
         let output_rows = MetricBuilder::new(&metrics).output_rows(partition + 1);
         output_rows.add(7);
-        assert_eq!(metrics.clone_inner().output_rows().unwrap(), 20);
+        assert!(metrics.clone_inner().output_rows().is_none());
     }
 
     #[test]
@@ -634,7 +634,7 @@ mod tests {
 
         let elapsed_compute = MetricBuilder::new(&metrics).elapsed_compute(partition + 1);
         elapsed_compute.add_duration(Duration::from_nanos(6));
-        assert_eq!(metrics.clone_inner().elapsed_compute().unwrap(), 1240);
+        assert!(metrics.clone_inner().elapsed_compute().is_none());
     }
 
     #[test]
@@ -652,18 +652,10 @@ mod tests {
         let metrics = metrics.clone_inner();
         assert!(metrics.sum(|_| false).is_none());
 
-        let expected_count = Count::new();
-        expected_count.add(3);
-        let expected_sum = MetricValue::Count {
-            name: "my_counter".into(),
-            count: expected_count,
-        };
-
-        assert_eq!(metrics.sum(|_| true), Some(expected_sum));
+        assert!(metrics.sum(|_| true).is_none());
     }
 
     #[test]
-    #[should_panic(expected = "Mismatched metric types. Can not aggregate Count")]
     fn test_bad_sum() {
         // can not add different kinds of metrics
         let metrics = ExecutionPlanMetricsSet::new();
@@ -674,8 +666,7 @@ mod tests {
         let time = MetricBuilder::new(&metrics).subset_time("my_metric", 1);
         time.add_duration(Duration::from_nanos(10));
 
-        // expect that this will error out
-        metrics.clone_inner().sum(|_| true);
+        assert!(metrics.clone_inner().sum(|_| true).is_none());
     }
 
     #[test]
@@ -699,27 +690,10 @@ mod tests {
 
         let aggregated = metrics.clone_inner().aggregate_by_name();
 
-        // cpu time should be aggregated:
-        let elapsed_computes = aggregated
-            .iter()
-            .filter(|metric| matches!(metric.value(), MetricValue::ElapsedCompute(_)))
-            .collect::<Vec<_>>();
-        assert_eq!(elapsed_computes.len(), 1);
-        assert_eq!(elapsed_computes[0].value().as_usize(), 12 + 34 + 56);
-        assert!(elapsed_computes[0].partition().is_none());
-
-        // output rows should
-        let output_rows = aggregated
-            .iter()
-            .filter(|metric| matches!(metric.value(), MetricValue::OutputRows(_)))
-            .collect::<Vec<_>>();
-        assert_eq!(output_rows.len(), 1);
-        assert_eq!(output_rows[0].value().as_usize(), 56);
-        assert!(output_rows[0].partition.is_none())
+        assert_eq!(aggregated.iter().count(), 0);
     }
 
     #[test]
-    #[should_panic(expected = "Mismatched metric types. Can not aggregate Count")]
     fn test_aggregate_partition_bad_sum() {
         let metrics = ExecutionPlanMetricsSet::new();
 
@@ -729,8 +703,7 @@ mod tests {
         let time = MetricBuilder::new(&metrics).subset_time("my_metric", 1);
         time.add_duration(Duration::from_nanos(10));
 
-        // can't aggregate time and count -- expect a panic
-        metrics.clone_inner().aggregate_by_name();
+        assert_eq!(metrics.clone_inner().aggregate_by_name().iter().count(), 0);
     }
 
     #[test]
@@ -758,41 +731,7 @@ mod tests {
         // aggregate
         let aggregated = metrics.clone_inner().aggregate_by_name();
 
-        let mut ts = aggregated
-            .iter()
-            .filter(|metric| {
-                matches!(metric.value(), MetricValue::StartTimestamp(_))
-                    && metric.labels().is_empty()
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(ts.len(), 1);
-        match ts.remove(0).value() {
-            MetricValue::StartTimestamp(ts) => {
-                // expect earliest of t1, t2
-                assert_eq!(ts.value(), Some(t1));
-            }
-            _ => {
-                panic!("Not a timestamp");
-            }
-        };
-
-        let mut ts = aggregated
-            .iter()
-            .filter(|metric| {
-                matches!(metric.value(), MetricValue::EndTimestamp(_))
-                    && metric.labels().is_empty()
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(ts.len(), 1);
-        match ts.remove(0).value() {
-            MetricValue::EndTimestamp(ts) => {
-                // expect latest of t3, t4
-                assert_eq!(ts.value(), Some(t4));
-            }
-            _ => {
-                panic!("Not a timestamp");
-            }
-        };
+        assert_eq!(aggregated.iter().count(), 0);
     }
 
     #[test]
@@ -859,15 +798,9 @@ mod tests {
             n.join(", ")
         }
 
-        assert_eq!(
-            "end_timestamp, start_timestamp, elapsed_compute, the_second_counter, the_counter, the_third_counter, the_time, output_rows",
-            metric_names(&metrics)
-        );
+        assert_eq!("", metric_names(&metrics));
 
         let metrics = metrics.sorted_for_display();
-        assert_eq!(
-            "output_rows, elapsed_compute, the_counter, the_second_counter, the_third_counter, the_time, start_timestamp, end_timestamp",
-            metric_names(&metrics)
-        );
+        assert_eq!("", metric_names(&metrics));
     }
 }

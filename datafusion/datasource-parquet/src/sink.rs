@@ -357,6 +357,7 @@ impl FileSink for ParquetSink {
             }
         }
 
+        let mut rows_written = 0;
         while let Some(result) = file_write_tasks.join_next().await {
             match result {
                 Ok(r) => {
@@ -367,6 +368,7 @@ impl FileSink for ParquetSink {
                         .iter()
                         .map(|rg| rg.compressed_size() as usize)
                         .sum();
+                    rows_written += file_rows;
                     rows_written_counter.add(file_rows);
                     bytes_written_counter.add(file_bytes);
                     let mut written_files = self.written.lock();
@@ -390,7 +392,7 @@ impl FileSink for ParquetSink {
             .await
             .map_err(|e| DataFusionError::ExecutionJoin(Box::new(e)))??;
 
-        Ok(rows_written_counter.value() as u64)
+        Ok(rows_written as u64)
     }
 }
 

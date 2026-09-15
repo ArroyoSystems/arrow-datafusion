@@ -36,7 +36,7 @@ use crate::joins::utils::{
     need_produce_right_in_final,
 };
 use crate::metrics::{
-    Count, ExecutionPlanMetricsSet, MetricBuilder, MetricType, MetricsSet, RatioMetrics,
+    ExecutionPlanMetricsSet, MetricBuilder, MetricType, MetricsSet, RatioMetrics,
 };
 use crate::projection::{
     EmbeddedProjection, JoinData, ProjectionExec, try_embed_projection,
@@ -1037,6 +1037,8 @@ pub(crate) struct NestedLoopJoinStream {
     output_buffer: Box<BatchCoalescer>,
     /// See comments in [`NLJState::Done`] for its purpose
     handled_empty_output: bool,
+    /// Whether this stream has emitted any output rows.
+    has_output_rows: bool,
 
     // Buffer(left) side
     // -----------------
@@ -1344,6 +1346,7 @@ impl NestedLoopJoinStream {
             left_exhausted: false,
             left_buffered_in_one_pass: true,
             handled_empty_output: false,
+            has_output_rows: false,
             should_track_unmatched_right: need_produce_right_in_final(join_type),
             spill_state,
             probe_completed_reported: false,
@@ -2009,13 +2012,10 @@ impl NestedLoopJoinStream {
         // for empty result, the final result will become an empty
         // batch with empty schema, however the expected result
         // should be with the expected schema for this operator
-        if !self.handled_empty_output {
-            let zero_count = Count::new();
-            if *self.metrics.join_metrics.baseline.output_rows() == zero_count {
-                let empty_batch = RecordBatch::new_empty(Arc::clone(&self.output_schema));
-                self.handled_empty_output = true;
-                return Poll::Ready(Some(Ok(empty_batch)));
-            }
+        if !self.handled_empty_output && !self.has_output_rows {
+            let empty_batch = RecordBatch::new_empty(Arc::clone(&self.output_schema));
+            self.handled_empty_output = true;
+            return Poll::Ready(Some(Ok(empty_batch)));
         }
 
         Poll::Ready(None)
@@ -2516,6 +2516,7 @@ impl NestedLoopJoinStream {
         {
             // Update output rows for selectivity metric
             let output_rows = batch.num_rows();
+            self.has_output_rows |= output_rows != 0;
             self.metrics.selectivity.add_part(output_rows);
 
             return Some(Poll::Ready(Some(Ok(batch))));
@@ -3210,6 +3211,22 @@ pub(crate) mod tests {
 
         assert_join_metrics!(metrics, 1);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn non_empty_join_does_not_emit_empty_batch() -> Result<()> {
+        let nested_loop_join = NestedLoopJoinExec::try_new(
+            build_left_table(),
+            build_right_table(),
+            Some(prepare_join_filter()),
+            &JoinType::Inner,
+            None,
+        )?;
+        let batches =
+            common::collect(nested_loop_join.execute(0, new_task_ctx(16))?).await?;
+
+        assert!(batches.iter().all(|batch| batch.num_rows() > 0));
         Ok(())
     }
 

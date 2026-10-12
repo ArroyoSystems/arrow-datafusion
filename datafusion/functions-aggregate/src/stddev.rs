@@ -262,7 +262,7 @@ impl StddevAccumulator {
 }
 
 impl Accumulator for StddevAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![
             ScalarValue::from(self.variance.get_count()),
             ScalarValue::from(self.variance.get_mean()),

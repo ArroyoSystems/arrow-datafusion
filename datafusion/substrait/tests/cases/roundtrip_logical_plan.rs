@@ -1676,7 +1676,7 @@ async fn roundtrip_aggregate_udf() -> Result<()> {
     struct Dummy {}
 
     impl Accumulator for Dummy {
-        fn state(&mut self) -> Result<Vec<ScalarValue>> {
+        fn state(&self) -> Result<Vec<ScalarValue>> {
             Ok(vec![ScalarValue::Float64(None), ScalarValue::UInt32(None)])
         }
 

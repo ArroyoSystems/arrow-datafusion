@@ -603,8 +603,8 @@ impl TimeSum {
 }
 
 impl Accumulator for TimeSum {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        Ok(vec![self.evaluate()?])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        Ok(vec![ScalarValue::TimestampNanosecond(Some(self.sum), None)])
     }
 
     fn update_batch(&mut self, values: &[ArrayRef]) -> Result<()> {
@@ -747,8 +747,8 @@ impl FirstSelector {
 }
 
 impl Accumulator for FirstSelector {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        self.evaluate().map(|s| vec![s])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        self.to_state().map(|s| vec![s])
     }
 
     /// produce the output structure
@@ -834,7 +834,7 @@ impl Accumulator for TestGroupsAccumulator {
         size_of::<u64>()
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![ScalarValue::from(self.result)])
     }
 
@@ -994,7 +994,7 @@ impl Accumulator for MetadataBasedAccumulator {
         9
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![ScalarValue::from(self.curr_sum)])
     }
 

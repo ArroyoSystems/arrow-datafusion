@@ -43,7 +43,7 @@ impl Default for Float64DistinctAvgAccumulator {
 }
 
 impl Accumulator for Float64DistinctAvgAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         self.sum_accumulator.state()
     }
 

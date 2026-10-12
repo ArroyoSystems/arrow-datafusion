@@ -2432,7 +2432,7 @@ fn roundtrip_aggregate_udf() {
     struct Dummy {}
 
     impl Accumulator for Dummy {
-        fn state(&mut self) -> Result<Vec<ScalarValue>> {
+        fn state(&self) -> Result<Vec<ScalarValue>> {
             Ok(vec![])
         }
 
@@ -2735,7 +2735,7 @@ fn roundtrip_window() {
     struct DummyAggr {}
 
     impl Accumulator for DummyAggr {
-        fn state(&mut self) -> Result<Vec<ScalarValue>> {
+        fn state(&self) -> Result<Vec<ScalarValue>> {
             Ok(vec![])
         }
 

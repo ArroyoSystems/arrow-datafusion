@@ -49,7 +49,7 @@ pub struct FFI_Accumulator {
 
     pub size: unsafe extern "C" fn(accumulator: &Self) -> usize,
 
-    pub state: unsafe extern "C" fn(accumulator: &mut Self) -> FFI_Result<SVec<SVec<u8>>>,
+    pub state: unsafe extern "C" fn(accumulator: &Self) -> FFI_Result<SVec<SVec<u8>>>,
 
     pub merge_batch: unsafe extern "C" fn(
         accumulator: &mut Self,
@@ -137,10 +137,10 @@ unsafe extern "C" fn size_fn_wrapper(accumulator: &FFI_Accumulator) -> usize {
 }
 
 unsafe extern "C" fn state_fn_wrapper(
-    accumulator: &mut FFI_Accumulator,
+    accumulator: &FFI_Accumulator,
 ) -> FFI_Result<SVec<SVec<u8>>> {
     unsafe {
-        let accumulator = accumulator.inner_mut();
+        let accumulator = accumulator.inner();
 
         let state = sresult_return!(accumulator.state());
         let state = state
@@ -295,10 +295,9 @@ impl Accumulator for ForeignAccumulator {
         unsafe { (self.accumulator.size)(&self.accumulator) }
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         unsafe {
-            let state_protos =
-                df_result!((self.accumulator.state)(&mut self.accumulator))?;
+            let state_protos = df_result!((self.accumulator.state)(&self.accumulator))?;
 
             state_protos
                 .into_iter()

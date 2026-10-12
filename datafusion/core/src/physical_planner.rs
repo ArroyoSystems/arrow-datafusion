@@ -3327,8 +3327,8 @@ mod tests {
     struct NullAccumulator;
 
     impl Accumulator for NullAccumulator {
-        fn state(&mut self) -> Result<Vec<ScalarValue>> {
-            Ok(vec![self.evaluate()?])
+        fn state(&self) -> Result<Vec<ScalarValue>> {
+            Ok(vec![ScalarValue::Int64(None)])
         }
 
         fn update_batch(&mut self, _values: &[ArrayRef]) -> Result<()> {

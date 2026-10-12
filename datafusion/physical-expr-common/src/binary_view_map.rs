@@ -63,6 +63,11 @@ impl ArrowBytesViewSet {
         self.0.into_state()
     }
 
+    /// Returns a snapshot of the set without consuming its contents.
+    pub fn as_state(&self) -> ArrayRef {
+        self.0.as_state()
+    }
+
     /// Returns the total number of distinct values (including nulls) seen so far
     pub fn len(&self) -> usize {
         self.0.len()
@@ -401,6 +406,25 @@ where
                 // SAFETY: all input was valid utf8
                 let array = unsafe { array.to_string_view_unchecked() };
                 Arc::new(array)
+            }
+            _ => unreachable!("Utf8/Binary should use `ArrowBytesMap`"),
+        }
+    }
+
+    /// Returns a snapshot of the keys without consuming the map.
+    pub fn as_state(&self) -> ArrayRef {
+        let mut buffers = self.completed.clone();
+        if !self.in_progress.is_empty() {
+            buffers.push(Buffer::from(self.in_progress.as_slice()));
+        }
+        let views = ScalarBuffer::from(self.views.clone());
+        let nulls = self.nulls.finish_cloned();
+        match self.output_type {
+            OutputType::BinaryView => {
+                Arc::new(BinaryViewArray::new(views, buffers, nulls))
+            }
+            OutputType::Utf8View => {
+                Arc::new(arrow::array::StringViewArray::new(views, buffers, nulls))
             }
             _ => unreachable!("Utf8/Binary should use `ArrowBytesMap`"),
         }

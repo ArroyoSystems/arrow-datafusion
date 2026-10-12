@@ -722,7 +722,7 @@ fn roundtrip_aggregate_udaf() -> Result<()> {
     #[derive(Debug)]
     struct Example;
     impl Accumulator for Example {
-        fn state(&mut self) -> Result<Vec<ScalarValue>> {
+        fn state(&self) -> Result<Vec<ScalarValue>> {
             Ok(vec![ScalarValue::Int64(Some(0))])
         }
 

@@ -355,8 +355,11 @@ where
         size_of_val(self)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        Ok(vec![self.evaluate()?])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        Ok(vec![ScalarValue::new_primitive::<T>(
+            self.value,
+            &T::DATA_TYPE,
+        )?])
     }
 
     fn merge_batch(&mut self, states: &[ArrayRef]) -> Result<()> {
@@ -400,8 +403,11 @@ where
         size_of_val(self)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        Ok(vec![self.evaluate()?])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        Ok(vec![ScalarValue::new_primitive::<T>(
+            self.value,
+            &T::DATA_TYPE,
+        )?])
     }
 
     fn merge_batch(&mut self, states: &[ArrayRef]) -> Result<()> {
@@ -454,8 +460,11 @@ where
         size_of_val(self)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        Ok(vec![self.evaluate()?])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        Ok(vec![ScalarValue::new_primitive::<T>(
+            self.value,
+            &T::DATA_TYPE,
+        )?])
     }
 
     fn merge_batch(&mut self, states: &[ArrayRef]) -> Result<()> {
@@ -517,7 +526,7 @@ where
         size_of_val(self) + self.values.capacity() * size_of::<T::Native>()
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         // 1. Stores aggregate state in `ScalarValue::List`
         // 2. Constructs `ScalarValue::List` state from distinct numeric stored in hash set
         let state_out = {

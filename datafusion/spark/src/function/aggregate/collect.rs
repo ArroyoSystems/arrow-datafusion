@@ -172,8 +172,12 @@ impl<T: Accumulator> Accumulator for NullToEmptyListAccumulator<T> {
         self.inner.merge_batch(states)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         self.inner.state()
+    }
+
+    fn state_mut(&mut self) -> Result<Vec<ScalarValue>> {
+        self.inner.state_mut()
     }
 
     fn evaluate(&mut self) -> Result<ScalarValue> {

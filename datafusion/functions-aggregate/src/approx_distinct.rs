@@ -108,7 +108,7 @@ impl<A: Accumulator> Accumulator for ApproxDistinctBitmapWrapper<A> {
         self.inner.size()
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         self.inner.state()
     }
 
@@ -210,7 +210,7 @@ macro_rules! default_accumulator_impl {
             Ok(())
         }
 
-        fn state(&mut self) -> Result<Vec<ScalarValue>> {
+        fn state(&self) -> Result<Vec<ScalarValue>> {
             let value = ScalarValue::from(&self.hll);
             Ok(vec![value])
         }

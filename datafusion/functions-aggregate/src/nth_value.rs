@@ -275,7 +275,7 @@ impl Accumulator for TrivialNthValueAccumulator {
         Ok(())
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         let mut values_cloned = self.values.clone();
         let values_slice = values_cloned.make_contiguous();
         Ok(vec![ScalarValue::List(ScalarValue::new_list_nullable(
@@ -494,7 +494,7 @@ impl Accumulator for NthValueAccumulator {
         Ok(())
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.evaluate_values(), self.evaluate_orderings()?])
     }
 

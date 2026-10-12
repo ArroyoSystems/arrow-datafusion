@@ -736,6 +736,21 @@ impl AggregateFunctionExpr {
             return_field: Arc::clone(&self.return_field),
             ordering_fields: &self.ordering_fields,
             is_distinct: self.is_distinct,
+            for_sliding: false,
+        };
+
+        self.fun.state_fields(args)
+    }
+
+    /// Returns the state fields for the sliding accumulator.
+    pub fn sliding_state_fields(&self) -> Result<Vec<FieldRef>> {
+        let args = StateFieldsArgs {
+            name: &self.name,
+            input_fields: &self.input_fields,
+            return_field: Arc::clone(&self.return_field),
+            ordering_fields: &self.ordering_fields,
+            is_distinct: self.is_distinct,
+            for_sliding: true,
         };
 
         self.fun.state_fields(args)

@@ -268,14 +268,25 @@ impl AggregateUDFImpl for Sum {
                 .into(),
             ])
         } else {
-            Ok(vec![
+            let mut fields: Vec<FieldRef> = vec![
                 Field::new(
                     format_state_name(args.name, "sum"),
                     args.return_type().clone(),
                     true,
                 )
                 .into(),
-            ])
+            ];
+            if args.for_sliding {
+                fields.push(
+                    Field::new(
+                        format_state_name(args.name, "count"),
+                        DataType::UInt64,
+                        true,
+                    )
+                    .into(),
+                );
+            }
+            Ok(fields)
         }
     }
 
@@ -409,8 +420,11 @@ impl<T: ArrowNumericType> SumAccumulator<T> {
 }
 
 impl<T: ArrowNumericType> Accumulator for SumAccumulator<T> {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        Ok(vec![self.evaluate()?])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        Ok(vec![ScalarValue::new_primitive::<T>(
+            self.sum,
+            &self.data_type,
+        )?])
     }
 
     fn update_batch(&mut self, values: &[ArrayRef]) -> Result<()> {
@@ -461,8 +475,12 @@ impl<T: ArrowNumericType> SlidingSumAccumulator<T> {
 }
 
 impl<T: ArrowNumericType> Accumulator for SlidingSumAccumulator<T> {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        Ok(vec![self.evaluate()?, self.count.into()])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        let value = (self.count != 0).then_some(self.sum);
+        Ok(vec![
+            ScalarValue::new_primitive::<T>(value, &self.data_type)?,
+            self.count.into(),
+        ])
     }
 
     fn update_batch(&mut self, values: &[ArrayRef]) -> Result<()> {
@@ -558,7 +576,7 @@ impl Accumulator for SlidingDistinctSumAccumulator {
         size_of_val(self)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         // Serialize distinct keys for cross-partition merge if needed
         let keys = self
             .counts

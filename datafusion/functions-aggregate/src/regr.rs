@@ -570,7 +570,7 @@ impl RegrAccumulator {
 }
 
 impl Accumulator for RegrAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![
             ScalarValue::from(self.count),
             ScalarValue::from(self.mean_x),

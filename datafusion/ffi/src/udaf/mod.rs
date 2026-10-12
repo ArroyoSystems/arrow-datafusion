@@ -101,6 +101,7 @@ pub struct FFI_AggregateUDF {
         return_field: WrappedSchema,
         ordering_fields: SVec<SVec<u8>>,
         is_distinct: bool,
+        for_sliding: bool,
     ) -> FFI_Result<SVec<SVec<u8>>>,
 
     /// FFI equivalent to [`AggregateUDF::create_groups_accumulator`]
@@ -274,6 +275,7 @@ unsafe extern "C" fn state_fields_fn_wrapper(
     return_field: WrappedSchema,
     ordering_fields: SVec<SVec<u8>>,
     is_distinct: bool,
+    for_sliding: bool,
 ) -> FFI_Result<SVec<SVec<u8>>> {
     unsafe {
         let udaf = udaf.inner();
@@ -302,6 +304,7 @@ unsafe extern "C" fn state_fields_fn_wrapper(
             return_field,
             ordering_fields,
             is_distinct,
+            for_sliding,
         };
 
         let state_fields = sresult_return!(udaf.state_fields(args));
@@ -519,7 +522,8 @@ impl AggregateUDFImpl for ForeignAggregateUDF {
                 input_fields,
                 return_field,
                 ordering_fields,
-                args.is_distinct
+                args.is_distinct,
+                args.for_sliding
             ))?;
             let fields = fields
                 .into_iter()
@@ -794,6 +798,7 @@ mod tests {
             return_field: Field::new("f", DataType::Float64, true).into(),
             ordering_fields: &[Arc::clone(&a_field)],
             is_distinct: false,
+            for_sliding: false,
         })?;
 
         assert_eq!(state_fields.len(), 3);

@@ -762,7 +762,7 @@ impl TrivialFirstValueAccumulator {
 }
 
 impl Accumulator for TrivialFirstValueAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.first.clone(), ScalarValue::from(self.is_set)])
     }
 
@@ -918,7 +918,7 @@ impl FirstValueAccumulator {
 }
 
 impl Accumulator for FirstValueAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         let mut result = vec![self.first.clone()];
         result.extend(self.orderings.iter().cloned());
         result.push(ScalarValue::from(self.is_set));
@@ -1154,7 +1154,7 @@ impl TrivialLastValueAccumulator {
 }
 
 impl Accumulator for TrivialLastValueAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![self.last.clone(), ScalarValue::from(self.is_set)])
     }
 
@@ -1305,7 +1305,7 @@ impl LastValueAccumulator {
 }
 
 impl Accumulator for LastValueAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         let mut result = vec![self.last.clone()];
         result.extend(self.orderings.clone());
         result.push(ScalarValue::from(self.is_set));

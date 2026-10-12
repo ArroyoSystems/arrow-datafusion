@@ -261,7 +261,13 @@ pub trait Accumulator: Send + Sync + Debug + std::any::Any {
     ///           group values           group values
     ///           in partition 0         in partition 1
     /// ```
-    fn state(&mut self) -> Result<Vec<ScalarValue>>;
+    fn state_mut(&mut self) -> Result<Vec<ScalarValue>> {
+        self.state()
+    }
+
+    /// Returns the internal state without consuming it; this method is safe to
+    /// call multiple times.
+    fn state(&self) -> Result<Vec<ScalarValue>>;
 
     /// Updates the accumulator's state from an `Array` containing one
     /// or more intermediate values.

@@ -85,9 +85,9 @@ impl<T: ArrowNumericType> TrySumAccumulator<T> {
 }
 
 impl<T: ArrowNumericType> Accumulator for TrySumAccumulator<T> {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![
-            self.evaluate()?,
+            evaluate_internal(self)?,
             ScalarValue::Boolean(Some(self.failed)),
         ])
     }
@@ -220,7 +220,7 @@ fn update_decimal128<T: ArrowNumericType>(
 }
 
 fn evaluate_internal<T: ArrowNumericType>(
-    acc: &mut TrySumAccumulator<T>,
+    acc: &TrySumAccumulator<T>,
 ) -> Result<ScalarValue> {
     if acc.failed {
         return ScalarValue::new_primitive::<T>(None, &acc.data_type);

@@ -394,7 +394,29 @@ where
     T::Native: Copy + AsPrimitive<f64>,
     f64: AsPrimitive<T::Native>,
 {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        // Convert `all_values` to `ListArray` and return a single List ScalarValue
+
+        // Build offsets
+        let offsets =
+            OffsetBuffer::new(ScalarBuffer::from(vec![0, self.all_values.len() as i32]));
+
+        // Build inner array
+        let values_array =
+            PrimitiveArray::<T>::new(ScalarBuffer::from(self.all_values.clone()), None);
+
+        // Build the result list array
+        let list_array = ListArray::new(
+            Arc::new(Field::new_list_field(T::DATA_TYPE, true)),
+            offsets,
+            Arc::new(values_array),
+            None,
+        );
+
+        Ok(vec![ScalarValue::List(Arc::new(list_array))])
+    }
+
+    fn state_mut(&mut self) -> Result<Vec<ScalarValue>> {
         // Convert `all_values` to `ListArray` and return a single List ScalarValue
 
         // Build offsets
@@ -684,7 +706,7 @@ where
     T::Native: Copy + AsPrimitive<f64>,
     f64: AsPrimitive<T::Native>,
 {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         self.distinct_values.state()
     }
 

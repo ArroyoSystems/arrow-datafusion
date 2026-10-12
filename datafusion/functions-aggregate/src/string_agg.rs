@@ -299,8 +299,12 @@ impl Accumulator for StringAggAccumulator {
             + self.delimiter.capacity()
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         self.array_agg_acc.state()
+    }
+
+    fn state_mut(&mut self) -> Result<Vec<ScalarValue>> {
+        self.array_agg_acc.state_mut()
     }
 
     fn merge_batch(&mut self, values: &[ArrayRef]) -> Result<()> {
@@ -519,7 +523,16 @@ impl Accumulator for SimpleStringAggAccumulator {
         size_of_val(self) + self.delimiter.capacity() + self.accumulated_string.capacity()
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        let result = if self.has_value {
+            ScalarValue::LargeUtf8(Some(self.accumulated_string.clone()))
+        } else {
+            ScalarValue::LargeUtf8(None)
+        };
+        Ok(vec![result])
+    }
+
+    fn state_mut(&mut self) -> Result<Vec<ScalarValue>> {
         let result = if self.has_value {
             ScalarValue::LargeUtf8(Some(std::mem::take(&mut self.accumulated_string)))
         } else {
@@ -774,7 +787,7 @@ mod tests {
 
     fn merge(
         mut acc1: Box<dyn Accumulator>,
-        mut acc2: Box<dyn Accumulator>,
+        acc2: Box<dyn Accumulator>,
     ) -> Result<Box<dyn Accumulator>> {
         let intermediate_state = acc2.state().and_then(|e| {
             e.iter()

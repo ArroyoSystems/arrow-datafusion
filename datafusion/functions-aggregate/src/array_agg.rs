@@ -337,6 +337,38 @@ impl ArrayAggAccumulator {
     }
 }
 
+impl ArrayAggAccumulator {
+    fn evaluate_value(&self) -> Result<ScalarValue> {
+        if self.values.is_empty() {
+            return Ok(ScalarValue::new_null_list(self.datatype.clone(), true, 1));
+        }
+
+        let element_arrays: Vec<ArrayRef> = self
+            .values
+            .iter()
+            .enumerate()
+            .map(|(i, a)| {
+                if i == 0 && self.front_offset > 0 {
+                    a.slice(self.front_offset, a.len() - self.front_offset)
+                } else {
+                    Arc::clone(a)
+                }
+            })
+            .collect();
+
+        let element_refs: Vec<&dyn Array> =
+            element_arrays.iter().map(|a| a.as_ref()).collect();
+
+        if element_refs.iter().all(|a| a.is_empty()) {
+            return Ok(ScalarValue::new_null_list(self.datatype.clone(), true, 1));
+        }
+
+        let concated_array = arrow::compute::concat(&element_refs)?;
+
+        Ok(SingleRowListArrayBuilder::new(concated_array).build_list_scalar())
+    }
+}
+
 impl Accumulator for ArrayAggAccumulator {
     fn update_batch(&mut self, values: &[ArrayRef]) -> Result<()> {
         // Append value like Int64Array(1,2,3)
@@ -393,38 +425,12 @@ impl Accumulator for ArrayAggAccumulator {
         Ok(())
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        Ok(vec![self.evaluate()?])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        Ok(vec![self.evaluate_value()?])
     }
 
     fn evaluate(&mut self) -> Result<ScalarValue> {
-        if self.values.is_empty() {
-            return Ok(ScalarValue::new_null_list(self.datatype.clone(), true, 1));
-        }
-
-        let element_arrays: Vec<ArrayRef> = self
-            .values
-            .iter()
-            .enumerate()
-            .map(|(i, a)| {
-                if i == 0 && self.front_offset > 0 {
-                    a.slice(self.front_offset, a.len() - self.front_offset)
-                } else {
-                    Arc::clone(a)
-                }
-            })
-            .collect();
-
-        let element_refs: Vec<&dyn Array> =
-            element_arrays.iter().map(|a| a.as_ref()).collect();
-
-        if element_refs.iter().all(|a| a.is_empty()) {
-            return Ok(ScalarValue::new_null_list(self.datatype.clone(), true, 1));
-        }
-
-        let concated_array = arrow::compute::concat(&element_refs)?;
-
-        Ok(SingleRowListArrayBuilder::new(concated_array).build_list_scalar())
+        self.evaluate_value()
     }
 
     fn retract_batch(&mut self, values: &[ArrayRef]) -> Result<()> {
@@ -835,9 +841,48 @@ impl DistinctArrayAggAccumulator {
     }
 }
 
+impl DistinctArrayAggAccumulator {
+    fn evaluate_value(&self) -> Result<ScalarValue> {
+        let mut values: Vec<ScalarValue> = self.values.iter().cloned().collect();
+        if values.is_empty() {
+            return Ok(ScalarValue::new_null_list(self.datatype.clone(), true, 1));
+        }
+
+        if let Some(opts) = self.sort_options {
+            let mut delayed_cmp_err = Ok(());
+            values.sort_by(|a, b| {
+                if a.is_null() {
+                    return match opts.nulls_first {
+                        true => Ordering::Less,
+                        false => Ordering::Greater,
+                    };
+                }
+                if b.is_null() {
+                    return match opts.nulls_first {
+                        true => Ordering::Greater,
+                        false => Ordering::Less,
+                    };
+                }
+                match opts.descending {
+                    true => b.try_cmp(a),
+                    false => a.try_cmp(b),
+                }
+                .unwrap_or_else(|err| {
+                    delayed_cmp_err = Err(err);
+                    Ordering::Equal
+                })
+            });
+            delayed_cmp_err?;
+        };
+
+        let arr = ScalarValue::new_list(&values, &self.datatype, true);
+        Ok(ScalarValue::List(arr))
+    }
+}
+
 impl Accumulator for DistinctArrayAggAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
-        Ok(vec![self.evaluate()?])
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        Ok(vec![self.evaluate_value()?])
     }
 
     fn update_batch(&mut self, values: &[ArrayRef]) -> Result<()> {
@@ -880,40 +925,7 @@ impl Accumulator for DistinctArrayAggAccumulator {
     }
 
     fn evaluate(&mut self) -> Result<ScalarValue> {
-        let mut values: Vec<ScalarValue> = self.values.iter().cloned().collect();
-        if values.is_empty() {
-            return Ok(ScalarValue::new_null_list(self.datatype.clone(), true, 1));
-        }
-
-        if let Some(opts) = self.sort_options {
-            let mut delayed_cmp_err = Ok(());
-            values.sort_by(|a, b| {
-                if a.is_null() {
-                    return match opts.nulls_first {
-                        true => Ordering::Less,
-                        false => Ordering::Greater,
-                    };
-                }
-                if b.is_null() {
-                    return match opts.nulls_first {
-                        true => Ordering::Greater,
-                        false => Ordering::Less,
-                    };
-                }
-                match opts.descending {
-                    true => b.try_cmp(a),
-                    false => a.try_cmp(b),
-                }
-                .unwrap_or_else(|err| {
-                    delayed_cmp_err = Err(err);
-                    Ordering::Equal
-                })
-            });
-            delayed_cmp_err?;
-        };
-
-        let arr = ScalarValue::new_list(&values, &self.datatype, true);
-        Ok(ScalarValue::List(arr))
+        self.evaluate_value()
     }
 
     fn size(&self) -> usize {
@@ -929,7 +941,7 @@ impl Accumulator for DistinctArrayAggAccumulator {
 /// Accumulator for a `ARRAY_AGG(... ORDER BY ..., ...)` aggregation. In a multi
 /// partition setting, partial aggregations are computed for every partition,
 /// and then their results are merged.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct OrderSensitiveArrayAggAccumulator {
     /// Stores entries in the `ARRAY_AGG` result.
     values: Vec<ScalarValue>,
@@ -1134,7 +1146,11 @@ impl Accumulator for OrderSensitiveArrayAggAccumulator {
         Ok(())
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
+        self.clone().state_mut()
+    }
+
+    fn state_mut(&mut self) -> Result<Vec<ScalarValue>> {
         if !self.is_input_pre_ordered {
             self.sort();
         }
@@ -1613,7 +1629,7 @@ mod tests {
 
     fn merge(
         mut acc1: Box<dyn Accumulator>,
-        mut acc2: Box<dyn Accumulator>,
+        acc2: Box<dyn Accumulator>,
     ) -> Result<Box<dyn Accumulator>> {
         let intermediate_state = acc2.state().and_then(|e| {
             e.iter()

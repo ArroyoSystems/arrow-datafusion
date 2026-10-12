@@ -68,7 +68,7 @@ where
     T: ArrowPrimitiveType + Send + Debug,
     T::Native: Eq + Hash,
 {
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let arr = Arc::new(
             PrimitiveArray::<T>::from_iter_values(self.values.iter().cloned())
                 .with_data_type(self.data_type.clone()),
@@ -146,7 +146,7 @@ impl<T: ArrowPrimitiveType> Default for FloatDistinctCountAccumulator<T> {
 }
 
 impl<T: ArrowPrimitiveType + Debug> Accumulator for FloatDistinctCountAccumulator<T> {
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         self.values.state()
     }
 
@@ -223,7 +223,7 @@ impl Accumulator for BoolArray256DistinctCountAccumulator {
         })
     }
 
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let values: Vec<u8> = self
             .seen
             .iter()
@@ -303,7 +303,7 @@ impl Accumulator for BoolArray256DistinctCountAccumulatorI8 {
         })
     }
 
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let values: Vec<i8> = self
             .seen
             .iter()
@@ -396,7 +396,7 @@ impl Accumulator for Bitmap65536DistinctCountAccumulator {
         })
     }
 
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let mut values = Vec::new();
         for (word_idx, &word) in self.bitmap.iter().enumerate() {
             if word != 0 {
@@ -490,7 +490,7 @@ impl Accumulator for Bitmap65536DistinctCountAccumulatorI16 {
         })
     }
 
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         let mut values = Vec::new();
         for (word_idx, &word) in self.bitmap.iter().enumerate() {
             if word != 0 {

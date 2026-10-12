@@ -58,7 +58,7 @@ impl Accumulator for NoopAccumulator {
         size_of_val(self)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         // We ensure we return a state field even if unused otherwise we run into
         // issues with queries like `SELECT agg_fn(NULL) FROM table`
         Ok(vec![ScalarValue::Null])

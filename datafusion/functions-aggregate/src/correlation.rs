@@ -230,7 +230,7 @@ impl Accumulator for CorrelationAccumulator {
             + self.stddev2.size()
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![
             ScalarValue::from(self.covar.get_count()),
             ScalarValue::from(self.covar.get_mean1()),

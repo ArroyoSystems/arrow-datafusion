@@ -60,8 +60,12 @@ impl Accumulator for DictionaryCountAccumulator {
         self.inner.size()
     }
 
-    fn state(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+    fn state(&self) -> datafusion_common::Result<Vec<ScalarValue>> {
         self.inner.state()
+    }
+
+    fn state_mut(&mut self) -> datafusion_common::Result<Vec<ScalarValue>> {
+        self.inner.state_mut()
     }
 
     fn merge_batch(&mut self, states: &[ArrayRef]) -> datafusion_common::Result<()> {

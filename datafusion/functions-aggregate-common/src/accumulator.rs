@@ -101,6 +101,9 @@ pub struct StateFieldsArgs<'a> {
 
     /// Whether the aggregate function is distinct.
     pub is_distinct: bool,
+
+    /// Whether the fields describe the sliding accumulator.
+    pub for_sliding: bool,
 }
 
 impl StateFieldsArgs<'_> {

@@ -327,7 +327,7 @@ fn update(count: u64, mean: f64, m2: f64, value: f64) -> (u64, f64, f64) {
 }
 
 impl Accumulator for VarianceAccumulator {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![
             ScalarValue::from(self.count),
             ScalarValue::from(self.mean),
@@ -645,7 +645,7 @@ impl Accumulator for DistinctVarianceAccumulator {
         size_of_val(self) + self.distinct_values.size()
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         self.distinct_values.state()
     }
 

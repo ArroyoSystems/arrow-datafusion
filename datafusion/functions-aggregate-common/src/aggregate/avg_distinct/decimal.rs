@@ -59,7 +59,7 @@ impl<T: DecimalType + Debug> DecimalDistinctAvgAccumulator<T> {
 impl<T: DecimalType + ArrowNumericType + Debug> Accumulator
     for DecimalDistinctAvgAccumulator<T>
 {
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         self.sum_accumulator.state()
     }
 

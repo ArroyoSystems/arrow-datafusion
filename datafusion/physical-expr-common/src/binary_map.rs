@@ -79,6 +79,11 @@ impl<O: OffsetSizeTrait> ArrowBytesSet<O> {
         self.0.into_state()
     }
 
+    /// Returns a snapshot of the set without consuming its contents.
+    pub fn as_state(&self) -> ArrayRef {
+        self.0.as_state()
+    }
+
     /// Returns the total number of distinct values (including nulls) seen so far
     pub fn len(&self) -> usize {
         self.0.len()
@@ -521,6 +526,24 @@ where
                 Arc::new(unsafe {
                     GenericStringArray::new_unchecked(offsets, values, nulls)
                 })
+            }
+            _ => unreachable!("View types should use `ArrowBytesViewMap`"),
+        }
+    }
+
+    /// Returns a snapshot of the keys without consuming the map.
+    pub fn as_state(&self) -> ArrayRef {
+        let nulls = self.null.map(|(_payload, null_index)| {
+            single_null_buffer(self.offsets.len() - 1, null_index)
+        });
+        let offsets = OffsetBuffer::new(ScalarBuffer::from(self.offsets.clone()));
+        let values = arrow::buffer::Buffer::from(self.buffer.as_slice());
+        match self.output_type {
+            OutputType::Binary => {
+                Arc::new(GenericBinaryArray::<O>::new(offsets, values, nulls))
+            }
+            OutputType::Utf8 => {
+                Arc::new(GenericStringArray::<O>::new(offsets, values, nulls))
             }
             _ => unreachable!("View types should use `ArrowBytesViewMap`"),
         }

@@ -2067,7 +2067,7 @@ pub fn finalize_aggregation(
             accumulators
                 .iter_mut()
                 .map(|accumulator| {
-                    accumulator.state().and_then(|e| {
+                    accumulator.state_mut().and_then(|e| {
                         e.iter()
                             .map(|v| v.to_array())
                             .collect::<Result<Vec<ArrayRef>>>()

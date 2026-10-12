@@ -210,7 +210,7 @@ impl Accumulator for BoolAndAccumulator {
         size_of_val(self)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![ScalarValue::Boolean(self.acc)])
     }
 
@@ -340,7 +340,7 @@ impl Accumulator for BoolOrAccumulator {
         size_of_val(self)
     }
 
-    fn state(&mut self) -> Result<Vec<ScalarValue>> {
+    fn state(&self) -> Result<Vec<ScalarValue>> {
         Ok(vec![ScalarValue::Boolean(self.acc)])
     }
 

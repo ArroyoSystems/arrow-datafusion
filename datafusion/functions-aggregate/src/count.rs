@@ -299,11 +299,13 @@ impl AggregateUDFImpl for Count {
     fn state_fields(&self, args: StateFieldsArgs) -> Result<Vec<FieldRef>> {
         if args.is_distinct {
             let dtype: DataType = match &args.input_fields[0].data_type() {
-                DataType::Dictionary(_, values_type) => (**values_type).clone(),
+                DataType::Dictionary(_, values_type) if !args.for_sliding => {
+                    (**values_type).clone()
+                }
                 &dtype => dtype.clone(),
             };
 
-            Ok(vec![
+            let mut fields: Vec<FieldRef> = vec![
                 Field::new_list(
                     format_state_name(args.name, "count distinct"),
                     // See COMMENTS.md to understand why nullable is set to true
@@ -311,7 +313,18 @@ impl AggregateUDFImpl for Count {
                     false,
                 )
                 .into(),
-            ])
+            ];
+            if args.for_sliding {
+                fields.push(
+                    Field::new_list(
+                        format_state_name(args.name, "count distinct counts"),
+                        Field::new_list_field(DataType::UInt64, true),
+                        false,
+                    )
+                    .into(),
+                );
+            }
+            Ok(fields)
         } else {
             Ok(vec![
                 Field::new(
@@ -434,8 +447,9 @@ impl AggregateUDFImpl for Count {
         args: AccumulatorArgs,
     ) -> Result<Box<dyn Accumulator>> {
         if args.is_distinct {
-            let acc =
-                SlidingDistinctCountAccumulator::try_new(args.return_field.data_type())?;
+            let acc = SlidingDistinctCountAccumulator::try_new(
+                args.expr_fields[0].data_type(),
+            )?;
             Ok(Box::new(acc))
         } else {
             let acc = CountAccumulator::new();
@@ -501,11 +515,15 @@ impl SlidingDistinctCountAccumulator {
 
 impl Accumulator for SlidingDistinctCountAccumulator {
     fn state(&self) -> Result<Vec<ScalarValue>> {
-        let keys = self.counts.keys().cloned().collect::<Vec<_>>();
-        Ok(vec![ScalarValue::List(ScalarValue::new_list_nullable(
-            keys.as_slice(),
-            &self.data_type,
-        ))])
+        let (keys, counts): (Vec<_>, Vec<_>) = self
+            .counts
+            .iter()
+            .map(|(key, count)| (key.clone(), ScalarValue::UInt64(Some(*count as u64))))
+            .unzip();
+        Ok(vec![
+            ScalarValue::List(ScalarValue::new_list_nullable(&keys, &self.data_type)),
+            ScalarValue::List(ScalarValue::new_list_nullable(&counts, &DataType::UInt64)),
+        ])
     }
 
     fn update_batch(&mut self, values: &[ArrayRef]) -> Result<()> {
@@ -536,11 +554,20 @@ impl Accumulator for SlidingDistinctCountAccumulator {
     }
 
     fn merge_batch(&mut self, states: &[ArrayRef]) -> Result<()> {
-        let list_arr = states[0].as_list::<i32>();
-        for inner in list_arr.iter().flatten() {
-            for j in 0..inner.len() {
-                let v = ScalarValue::try_from_array(&*inner, j)?;
-                *self.counts.entry(v).or_default() += 1;
+        let [keys, counts] = states else {
+            return exec_err!("Sliding COUNT(DISTINCT) state requires values and counts");
+        };
+        for (keys, counts) in keys
+            .as_list::<i32>()
+            .iter()
+            .zip(counts.as_list::<i32>().iter())
+        {
+            if let (Some(keys), Some(counts)) = (keys, counts) {
+                let counts = counts.as_primitive::<UInt64Type>();
+                for (j, count) in counts.values().iter().enumerate() {
+                    let v = ScalarValue::try_from_array(&*keys, j)?;
+                    *self.counts.entry(v).or_default() += *count as usize;
+                }
             }
         }
         Ok(())

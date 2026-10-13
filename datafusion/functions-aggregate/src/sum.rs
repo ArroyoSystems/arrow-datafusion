@@ -258,7 +258,7 @@ impl AggregateUDFImpl for Sum {
 
     fn state_fields(&self, args: StateFieldsArgs) -> Result<Vec<FieldRef>> {
         if args.is_distinct {
-            Ok(vec![
+            let mut fields: Vec<FieldRef> = vec![
                 Field::new_list(
                     format_state_name(args.name, "sum distinct"),
                     // See COMMENTS.md to understand why nullable is set to true
@@ -266,7 +266,18 @@ impl AggregateUDFImpl for Sum {
                     false,
                 )
                 .into(),
-            ])
+            ];
+            if args.for_sliding {
+                fields.push(
+                    Field::new_list(
+                        format_state_name(args.name, "sum distinct counts"),
+                        Field::new_list_field(DataType::UInt64, true),
+                        false,
+                    )
+                    .into(),
+                );
+            }
+            Ok(fields)
         } else {
             let mut fields: Vec<FieldRef> = vec![
                 Field::new(
@@ -577,33 +588,43 @@ impl Accumulator for SlidingDistinctSumAccumulator {
     }
 
     fn state(&self) -> Result<Vec<ScalarValue>> {
-        // Serialize distinct keys for cross-partition merge if needed
-        let keys = self
+        let (keys, counts): (Vec<_>, Vec<_>) = self
             .counts
-            .keys()
-            .cloned()
-            .map(Some)
-            .map(ScalarValue::Int64)
-            .collect::<Vec<_>>();
-        Ok(vec![ScalarValue::List(ScalarValue::new_list_nullable(
-            &keys,
-            &self.data_type,
-        ))])
+            .iter()
+            .map(|(key, count)| {
+                (
+                    ScalarValue::Int64(Some(*key)),
+                    ScalarValue::UInt64(Some(*count as u64)),
+                )
+            })
+            .unzip();
+        Ok(vec![
+            ScalarValue::List(ScalarValue::new_list_nullable(&keys, &self.data_type)),
+            ScalarValue::List(ScalarValue::new_list_nullable(&counts, &DataType::UInt64)),
+        ])
     }
 
     fn merge_batch(&mut self, states: &[ArrayRef]) -> Result<()> {
-        // Merge distinct keys from other partitions
-        let list_arr = states[0].as_list::<i32>();
-        for maybe_inner in list_arr.iter().flatten() {
-            for idx in 0..maybe_inner.len() {
-                if let ScalarValue::Int64(Some(v)) =
-                    ScalarValue::try_from_array(&*maybe_inner, idx)?
-                {
-                    let cnt = self.counts.entry(v).or_insert(0);
-                    if *cnt == 0 {
-                        self.sum = self.sum.wrapping_add(v);
+        let [keys, counts] = states else {
+            return exec_err!("Sliding SUM(DISTINCT) state requires values and counts");
+        };
+        for (keys, counts) in keys
+            .as_list::<i32>()
+            .iter()
+            .zip(counts.as_list::<i32>().iter())
+        {
+            if let (Some(keys), Some(counts)) = (keys, counts) {
+                let counts = counts.as_primitive::<UInt64Type>();
+                for (idx, count) in counts.values().iter().enumerate() {
+                    if let ScalarValue::Int64(Some(v)) =
+                        ScalarValue::try_from_array(&*keys, idx)?
+                    {
+                        let cnt = self.counts.entry(v).or_insert(0);
+                        if *cnt == 0 {
+                            self.sum = self.sum.wrapping_add(v);
+                        }
+                        *cnt += *count as usize;
                     }
-                    *cnt += 1;
                 }
             }
         }

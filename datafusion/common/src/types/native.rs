@@ -338,11 +338,11 @@ impl LogicalType for NativeType {
             (Self::String, BinaryView) => Utf8View,
             // We don't cast to another kind of string type if the origin one is already a string type
             (Self::String, Utf8 | LargeUtf8 | Utf8View) => origin.to_owned(),
-            (Self::String, data_type) if can_cast_types(data_type, &Utf8View) => Utf8View,
+            (Self::String, data_type) if can_cast_types(data_type, &Utf8) => Utf8,
             (Self::String, data_type) if can_cast_types(data_type, &LargeUtf8) => {
                 LargeUtf8
             }
-            (Self::String, data_type) if can_cast_types(data_type, &Utf8) => Utf8,
+            (Self::String, data_type) if can_cast_types(data_type, &Utf8View) => Utf8View,
             (Self::List(to_field), List(from_field) | FixedSizeList(from_field, _)) => {
                 List(default_field_cast(to_field, from_field)?)
             }

@@ -497,6 +497,25 @@ fn try_coerce_types(
 ) -> Result<Vec<DataType>> {
     let mut valid_types = valid_types;
 
+    // Prefer legacy string representations unless a view was supplied explicitly.
+    // Do not reorder overloads that also differ in non-string arguments.
+    if !current_types.contains(&DataType::Utf8View) {
+        let has_large_utf8 = current_types.contains(&DataType::LargeUtf8);
+        for alternatives in valid_types.chunk_by_mut(|a, b| {
+            a.len() == b.len()
+                && a.iter()
+                    .zip(b)
+                    .all(|(a, b)| a == b || (a.is_string() && b.is_string()))
+        }) {
+            alternatives.sort_by_key(|types| {
+                (
+                    types.contains(&DataType::Utf8View),
+                    has_large_utf8 && types.contains(&DataType::Utf8),
+                )
+            });
+        }
+    }
+
     // Well-supported signature that returns exact valid types.
     if !valid_types.is_empty() && is_well_supported_signature(type_signature) {
         // There may be many valid types if valid signature is OneOf
@@ -827,7 +846,7 @@ fn get_valid_types(
             }
             // Convert null to String type.
             if target_type.is_null() {
-                vec![vec![DataType::Utf8View; *num]]
+                vec![vec![DataType::Utf8; *num]]
             } else {
                 vec![vec![target_type; *num]]
             }

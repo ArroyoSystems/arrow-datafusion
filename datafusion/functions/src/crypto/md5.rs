@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use arrow::{array::StringViewArray, datatypes::DataType};
+use arrow::{array::StringArray, datatypes::DataType};
 use datafusion_common::{
     Result, ScalarValue,
     cast::as_binary_array,
@@ -86,7 +86,7 @@ impl ScalarUDFImpl for Md5Func {
     }
 
     fn return_type(&self, _arg_types: &[DataType]) -> Result<DataType> {
-        Ok(DataType::Utf8View)
+        Ok(DataType::Utf8)
     }
 
     fn invoke_with_args(&self, args: ScalarFunctionArgs) -> Result<ColumnarValue> {
@@ -118,16 +118,16 @@ fn md5(args: &[ColumnarValue]) -> Result<ColumnarValue> {
     let [data] = take_function_args("md5", args)?;
     let value = digest_process(data, DigestAlgorithm::Md5)?;
 
-    // md5 requires special handling because of its unique utf8view return type
+    // md5 requires special handling because of its unique utf8 return type
     Ok(match value {
         ColumnarValue::Array(array) => {
             let binary_array = as_binary_array(&array)?;
-            let string_array: StringViewArray =
+            let string_array: StringArray =
                 binary_array.iter().map(|opt| opt.map(hex_encode)).collect();
             ColumnarValue::Array(Arc::new(string_array))
         }
         ColumnarValue::Scalar(ScalarValue::Binary(opt)) => {
-            ColumnarValue::Scalar(ScalarValue::Utf8View(opt.map(hex_encode)))
+            ColumnarValue::Scalar(ScalarValue::Utf8(opt.map(hex_encode)))
         }
         _ => return internal_err!("Impossibly got invalid results from digest"),
     })

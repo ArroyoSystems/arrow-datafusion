@@ -1860,11 +1860,11 @@ SELECT left(ascii_1, 0), right(ascii_1, 0) FROM test_basic_operator
 NULL NULL
 NULL NULL
 
-# left and right return Utf8View
-query TT
-SELECT arrow_typeof(left(ascii_1, 3)), arrow_typeof(right(ascii_1, 3)) FROM test_basic_operator LIMIT 1
+# Like lower, left and right preserve the coerced string representation
+query BB
+SELECT arrow_typeof(left(ascii_1, 3)) = arrow_typeof(lower(ascii_1)), arrow_typeof(right(ascii_1, 3)) = arrow_typeof(lower(ascii_1)) FROM test_basic_operator LIMIT 1
 ----
-Utf8View Utf8View
+true true
 
 # --------------------------------------
 # Test repeat() against array inputs with various null patterns. The scalar

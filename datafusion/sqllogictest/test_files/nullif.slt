@@ -112,7 +112,7 @@ select nullif(1.0, 2);
 ----
 1
 
-query error DataFusion error: Optimizer rule 'simplify_expressions' failed[\s\S]*Arrow error: Cast error: Cannot cast string 'a' to value of Int64 type
+query error Error during planning:
 select nullif(2, 'a');
 
 query T
@@ -120,26 +120,23 @@ select nullif('2', '3');
 ----
 2
 
-query I
+query error Error during planning:
 select nullif(2, '1');
-----
-2
 
-query I
+query error Error during planning:
 select nullif('2', 2);
-----
-NULL
 
-query I
+query error Error during planning:
 select nullif('1', 2);
-----
-1
 
 statement ok
 create table t(a varchar, b int) as values ('1', 2), ('2', 2), ('3', 2);
 
-query I
+query error Error during planning:
 select nullif(a, b) from t;
+
+query I
+select nullif(CAST(a AS BIGINT), b) from t;
 ----
 1
 NULL

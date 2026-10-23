@@ -1167,36 +1167,35 @@ SELECT 0.3 NOT IN (0.0,0.1,0.2,NULL)
 ----
 NULL
 
-# Mixed string/integer IN lists: comparison coercion picks the numeric
-# type, so non-numeric strings like 'a' fail to cast to Int64.
-query error Cannot cast string 'a' to value of Int64 type
+# Mixed string/integer IN lists are rejected before values are cast.
+query error Error during planning: Can not find compatible types to compare
 SELECT '1' IN ('a','b',1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT '2' IN ('a','b',1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT '2' NOT IN ('a','b',1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT '1' NOT IN ('a','b',1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT NULL IN ('a','b',1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT NULL NOT IN ('a','b',1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT '1' IN ('a','b',NULL,1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT '2' IN ('a','b',NULL,1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT '1' NOT IN ('a','b',NULL,1)
 
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning: Can not find compatible types to compare
 SELECT '2' NOT IN ('a','b',NULL,1)
 
 # ========================================================================

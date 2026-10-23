@@ -349,7 +349,7 @@ statement error DataFusion error: Error during planning: Inconsistent data lengt
 VALUES (1),(1,2)
 
 query I
-VALUES (1),('2')
+VALUES (1),(CAST('2' AS BIGINT))
 ----
 1
 2
@@ -361,7 +361,7 @@ VALUES (1),(2.0)
 2
 
 query II
-VALUES (1,2), (1,'2')
+VALUES (1,2), (1,CAST('2' AS BIGINT))
 ----
 1 2
 1 2

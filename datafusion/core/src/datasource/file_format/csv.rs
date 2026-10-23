@@ -611,7 +611,7 @@ mod tests {
             .await?;
 
         let record_batch = df
-            .filter(col("c1").eq(lit("a")).and(col("c2").gt(lit("4"))))?
+            .filter(col("c1").eq(lit("a")).and(col("c2").gt(lit(4i64))))?
             .select_columns(&["c2", "c3"])?
             .collect()
             .await?;

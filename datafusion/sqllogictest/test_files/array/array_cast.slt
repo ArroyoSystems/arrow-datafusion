@@ -39,7 +39,7 @@ select make_array(1, 2.0, null, 3)
 
 # make_array scalar function #4
 query ?
-select make_array(1.0, '2', null)
+select make_array(1.0, CAST('2' AS DOUBLE), null)
 ----
 [1.0, 2.0, NULL]
 

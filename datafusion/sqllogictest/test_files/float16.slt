@@ -18,7 +18,7 @@
 # Basic tests Tests for Float16 Type
 
 statement ok
-create table floats as values (1.0), (2.0), (3.0), (NULL), ('Nan');
+create table floats as values (1.0), (2.0), (3.0), (NULL), (CAST('Nan' AS DOUBLE));
 
 statement ok
 create table float16s as select arrow_cast(column1, 'Float16') as column1 from floats;

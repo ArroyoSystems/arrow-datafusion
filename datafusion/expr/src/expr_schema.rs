@@ -26,6 +26,7 @@ use crate::expr::{FieldMetadata, LambdaVariable};
 use crate::higher_order_function::HigherOrderReturnFieldArgs;
 use crate::type_coercion::functions::value_fields_with_higher_order_udf_and_lambdas;
 use crate::type_coercion::functions::{UDFCoercionExt, fields_with_udf};
+use crate::type_coercion::other::get_coerce_type_for_case_expression;
 use crate::udf::ReturnFieldArgs;
 use crate::{LogicalPlan, Projection, Subquery, WindowFunctionDefinition, utils};
 use arrow::compute::can_cast_types;
@@ -38,6 +39,7 @@ use datafusion_common::{
 };
 use datafusion_expr_common::type_coercion::binary::BinaryTypeCoercer;
 use datafusion_functions_window_common::field::WindowUDFFieldArgs;
+use itertools::Itertools;
 use std::sync::Arc;
 
 /// Trait to allow expr to typable with respect to a schema
@@ -144,15 +146,26 @@ impl ExprSchemable for Expr {
             Expr::ScalarVariable(field, _) => Ok(field.data_type().clone()),
             Expr::Literal(l, _) => Ok(l.data_type()),
             Expr::Case(case) => {
-                for (_, then_expr) in &case.when_then_expr {
-                    let then_type = then_expr.get_type(schema)?;
-                    if !then_type.is_null() {
-                        return Ok(then_type);
-                    }
-                }
-                case.else_expr
+                let then_types = case
+                    .when_then_expr
+                    .iter()
+                    .map(|(_, then_expr)| then_expr.get_type(schema))
+                    .collect::<Result<Vec<_>>>()?;
+                let else_type = case
+                    .else_expr
                     .as_ref()
-                    .map_or(Ok(DataType::Null), |e| e.get_type(schema))
+                    .map(|expr| expr.get_type(schema))
+                    .transpose()?;
+                get_coerce_type_for_case_expression(&then_types, else_type.as_ref())
+                    .ok_or_else(|| {
+                        plan_datafusion_err!(
+                            "Failed to coerce then ({}) and else ({}) \
+                             to common types in CASE WHEN expression",
+                            then_types.iter().join(", "),
+                            else_type
+                                .map_or_else(|| "None".to_string(), |t| t.to_string())
+                        )
+                    })
             }
             Expr::Cast(Cast { field, .. }) | Expr::TryCast(TryCast { field, .. }) => {
                 Ok(field.data_type().clone())
@@ -799,6 +812,28 @@ mod tests {
     use crate::{and, col, lit, not, or, out_ref_col_with_metadata, when};
 
     use datafusion_common::{DFSchema, assert_or_internal_err};
+
+    #[test]
+    fn case_type_matches_then_else_coercion() -> Result<()> {
+        let schema = DFSchema::empty();
+        // SQL planning constructs CASE before its THEN/ELSE branches are coerced.
+        let make_case = |then_expr, else_expr| {
+            Expr::Case(crate::expr::Case {
+                expr: None,
+                when_then_expr: vec![(Box::new(lit(true)), Box::new(then_expr))],
+                else_expr: Some(Box::new(else_expr)),
+            })
+        };
+        let expression = make_case(lit(123_i64), lit("abc"));
+        assert_eq!(expression.get_type(&schema)?, DataType::Utf8);
+        assert_eq!(
+            expression.eq(lit("123")).get_type(&schema)?,
+            DataType::Boolean
+        );
+        let expression = make_case(lit(1_i32), lit(2_i64));
+        assert_eq!(expression.get_type(&schema)?, DataType::Int64);
+        Ok(())
+    }
 
     macro_rules! test_is_expr_nullable {
         ($EXPR_TYPE:ident) => {{

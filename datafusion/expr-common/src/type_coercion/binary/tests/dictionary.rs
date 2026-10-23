@@ -32,12 +32,12 @@ fn test_dictionary_type_coercion() {
         Some(Int32)
     );
 
-    // In comparison context, numeric is preferred over string
+    // String/numeric comparisons require an explicit cast.
     let lhs_type = Dictionary(Box::new(Int8), Box::new(Utf8));
     let rhs_type = Dictionary(Box::new(Int8), Box::new(Int16));
     assert_eq!(
         dictionary_coercion(&lhs_type, &rhs_type, true, comparison_coercion),
-        Some(Int16)
+        None
     );
 
     // Since we can coerce values of Utf8 to Binary can support this

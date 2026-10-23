@@ -42,15 +42,14 @@ NULL R NULL 🔥
 # --------------------------------------
 # test type coercion (compare to int)
 #
-# Comparing a string column to an integer literal is allowed but will fail
-# at runtime if the string column contains any values that can't be cast
-# to integers.
+# Comparing a string column to an integer literal fails during planning,
+# before any string values are read or cast.
 # --------------------------------------
 
-statement error Arrow error: Cast error: Cannot cast string 'Andrew' to value of Int64 type
+statement error Error during planning: Cannot infer common argument type for comparison operation
 select ascii_1 = 1 as col1, 1 = ascii_1 as col2 from test_basic_operator;
 
-statement error Arrow error: Cast error: Cannot cast string 'Andrew' to value of Int64 type
+statement error Error during planning: Cannot infer common argument type for comparison operation
 select ascii_1 <> 1 as col1, 1 <> ascii_1 as col2 from test_basic_operator;
 
 # Coercion to date/time

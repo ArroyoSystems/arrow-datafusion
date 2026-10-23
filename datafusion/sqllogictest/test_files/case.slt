@@ -173,8 +173,11 @@ SELECT CASE 1 WHEN 1 THEN arrow_cast([1, 2], 'FixedSizeList(2, Int64)') WHEN 2 T
 ----
 [1, 2]
 
-query error DataFusion error: type_coercion
+query error Error during planning: Failed to coerce then \(List\(Int64\), Utf8\) and else \(Null\) to common types in CASE WHEN expression
 SELECT CASE 1 WHEN 1 THEN [1,2,3] WHEN 2 THEN 'test' ELSE null END;
+
+query error Error during planning: Failed to coerce then \(List\(Int64\), Int64\) and else \(None\) to common types in CASE WHEN expression
+SELECT CASE WHEN true THEN [1] WHEN false THEN 1 END;
 
 # test case when type coercion
 query I
@@ -210,15 +213,11 @@ SELECT CASE arrow_cast([1,2], 'FixedSizeList(2, Int64)') WHEN arrow_cast([1,2,3]
 ----
 0
 
-query I
+query error Error during planning: Failed to coerce case .* and when .* to common types in CASE WHEN expression
 SELECT CASE arrow_cast([1,2], 'FixedSizeList(2, Int64)') WHEN arrow_cast(['1','2','3'], 'FixedSizeList(3, Utf8)') THEN 1 ELSE 0 END;
-----
-0
 
-query I
+query error Error during planning: Failed to coerce case .* and when .* to common types in CASE WHEN expression
 SELECT CASE arrow_cast(['1','2'], 'FixedSizeList(2, Utf8)') WHEN arrow_cast([1,2,3], 'FixedSizeList(3, Int64)') THEN 1 ELSE 0 END;
-----
-0
 
 query I
 SELECT CASE arrow_cast([1,2,3], 'FixedSizeList(3, Int64)') WHEN arrow_cast([1,2,3], 'FixedSizeList(3, Int64)') THEN 1 ELSE 0 END;
@@ -411,7 +410,7 @@ FROM t;
 
 # coerce structs with subset of fields - field count mismatch causes type coercion failure
 # column3 has 2 fields but column4 has only 1 field
-query error DataFusion error: type_coercion\ncaused by\nError during planning: Failed to coerce then .* and else .* to common types in CASE WHEN expression
+query error Error during planning: Failed to coerce then .* and else .* to common types in CASE WHEN expression
 SELECT
   case
     when column1 > 0 then column3

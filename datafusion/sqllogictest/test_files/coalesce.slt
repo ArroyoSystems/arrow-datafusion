@@ -318,9 +318,9 @@ select coalesce(null, 34, arrow_cast(123, 'Dictionary(Int32, Int8)'));
 ----
 34
 
-# numeric string coercion
+# Numeric strings require explicit casts.
 query RT
-select coalesce(2.0, 1, '3'), arrow_typeof(coalesce(2.0, 1, '3'));
+select coalesce(2.0, 1, CAST('3' AS DOUBLE)), arrow_typeof(coalesce(2.0, 1, CAST('3' AS DOUBLE)));
 ----
 2 Float64
 
@@ -353,9 +353,9 @@ SELECT COALESCE(c1, c2) FROM test
 1
 NULL
 
-# numeric string is coerced to numeric in both Postgres and DuckDB
+# A string fallback requires an explicit numeric cast.
 query I
-SELECT COALESCE(c1, c2, '-1') FROM test;
+SELECT COALESCE(c1, c2, CAST('-1' AS BIGINT)) FROM test;
 ----
 0
 1

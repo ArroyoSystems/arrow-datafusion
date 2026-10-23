@@ -2301,7 +2301,7 @@ LOCATION 'test_files/scratch/subquery/partition_pruning/';
 
 query IT
 SELECT column1, column2 FROM subquery_partitioned
-WHERE part = (SELECT 1)
+WHERE part = (SELECT '1')
 ORDER BY column1;
 ----
 1 a

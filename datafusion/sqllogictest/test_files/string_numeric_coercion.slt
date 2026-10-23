@@ -16,10 +16,13 @@
 # under the License.
 
 ##########
-## Tests for string-numeric comparison coercion
-## Verifies that when comparing a numeric column to a string literal,
-## the comparison is performed numerically (not lexicographically).
-## See: https://github.com/apache/datafusion/issues/15161
+## Strict string/numeric coercion policy
+## Comparisons require matching types or an explicit CAST/TRY_CAST, even
+## for numeric-looking string literals. Numeric widening is still allowed.
+## The shared resolution rule also rejects mixed COALESCE, arrays and VALUES.
+## CASE results and UNION still unify numbers to text; NVL/IFNULL retain
+## their existing text-unification signature. This is not a general ban on
+## implicit casts (for example, string/temporal coercion is unchanged).
 ##########
 
 # Setup test data
@@ -29,45 +32,210 @@ CREATE TABLE t_int AS VALUES (1), (5), (325), (499), (1000);
 statement ok
 CREATE TABLE t_float AS VALUES (1.5), (5.0), (325.7), (499.9), (1000.1);
 
-# -------------------------------------------------
-# Integer column with comparison operators vs string literals.
-# Ensure that the comparison is done with numeric semantics,
-# not lexicographically.
-# -------------------------------------------------
-
-query I rowsort
+# Reject all comparison operators, including numeric-looking literals.
+statement error Error during planning: Cannot infer common argument type for comparison operation Int64 < Utf8
 SELECT * FROM t_int WHERE column1 < '5';
-----
-1
 
-query I rowsort
+statement error Error during planning: Cannot infer common argument type for comparison operation Int64 > Utf8
 SELECT * FROM t_int WHERE column1 > '5';
-----
-1000
-325
-499
 
-query I rowsort
+statement error Error during planning: Cannot infer common argument type for comparison operation Int64 <= Utf8
 SELECT * FROM t_int WHERE column1 <= '5';
-----
-1
-5
 
-query I rowsort
+statement error Error during planning: Cannot infer common argument type for comparison operation Int64 >= Utf8
 SELECT * FROM t_int WHERE column1 >= '5';
-----
-1000
-325
-499
-5
 
-query I rowsort
+statement error Error during planning: Cannot infer common argument type for comparison operation Int64 = Utf8
 SELECT * FROM t_int WHERE column1 = '5';
+
+statement error Error during planning: Cannot infer common argument type for comparison operation Int64 != Utf8
+SELECT * FROM t_int WHERE column1 != '5';
+
+statement error Error during planning: Cannot infer common argument type for comparison operation Float64 = Utf8
+SELECT * FROM t_float WHERE column1 = '5.0';
+
+statement error Error during planning: Cannot infer common argument type for comparison operation Utf8 = Int64
+SELECT * FROM t_int WHERE '5' = column1;
+
+statement error Error during planning: Cannot infer common argument type for comparison operation Int64 = Utf8
+SELECT * FROM t_int WHERE column1 = 'abc';
+
+statement error Error during planning: Can not find compatible types to compare
+SELECT * FROM t_int WHERE column1 IN ('5', '325');
+
+statement error Error during planning: Can not find compatible types to compare
+SELECT * FROM t_int WHERE column1 NOT IN (5, '325');
+
+statement error Error during planning: Failed to coerce types
+SELECT * FROM t_int WHERE column1 BETWEEN '5' AND '100';
+
+statement error Error during planning: Failed to coerce case .* and when .* to common types in CASE WHEN expression
+SELECT CASE column1 WHEN '5' THEN 'five' ELSE 'other' END FROM t_int;
+
+statement error Error during planning:
+SELECT GREATEST(10, '9');
+
+statement error Error during planning:
+SELECT LEAST(10, '9');
+
+statement error Error during planning:
+SELECT NULLIF(10, '10');
+
+# Shared type resolution is strict too, even when all inputs are literals.
+statement error Error during planning:
+SELECT COALESCE(1, '2');
+
+statement error Error during planning:
+SELECT make_array(1, '2');
+
+statement error Error during planning: Inconsistent data type across values list
+VALUES (1), ('2');
+
+statement error Error during planning:
+SELECT array_has(['1', 'abc'], 1);
+
+# The motivating stream case must fail while planning, even with zero rows.
+statement ok
+CREATE TABLE empty_stream (user_id TEXT);
+
+statement error Error during planning: Cannot infer common argument type for comparison operation Utf8View != Int64
+SELECT * FROM empty_stream WHERE user_id != 123;
+
+statement ok
+DROP TABLE empty_stream;
+
+# Preserve explicit casts, numeric widening and safe result-type unification.
+statement ok
+CREATE TABLE typed_stream (user_id TEXT, number BIGINT, flag BOOLEAN)
+AS VALUES ('123', 123, true), ('abc', 456, false), ('', 0, false);
+
+statement error Error during planning: Cannot infer common argument type for comparison operation Utf8View != Int64
+SELECT * FROM typed_stream WHERE user_id != 123;
+
+statement error Error during planning:
+SELECT COALESCE(user_id, 123) FROM typed_stream;
+
+statement error Error during planning:
+SELECT COALESCE(number, '0') FROM typed_stream;
+
+statement error Error during planning:
+SELECT make_array(number, user_id) FROM typed_stream;
+
+query I
+SELECT count(*) FROM typed_stream WHERE TRY_CAST(user_id AS BIGINT) = 123;
+----
+1
+
+query I
+SELECT count(*) FROM typed_stream WHERE user_id = CAST(123 AS TEXT);
+----
+1
+
+query I
+SELECT count(*) FROM typed_stream WHERE user_id != '123';
+----
+2
+
+query I
+SELECT count(*) FROM typed_stream WHERE number > CAST(1 AS SMALLINT);
+----
+2
+
+query TT
+SELECT arrow_typeof(NVL(123, '0')), arrow_typeof(IFNULL('abc', 123));
+----
+Utf8 Utf8
+
+query T
+SELECT arrow_typeof(CASE WHEN true THEN 123 ELSE 'abc' END);
+----
+Utf8
+
+# CASE's common result type must be visible before the analyzer visits users
+# of a CTE/subquery column, including captured correlated outer references.
+query I
+WITH ids AS (SELECT CASE WHEN flag THEN 123 ELSE user_id END AS id FROM typed_stream)
+SELECT count(*) FROM ids WHERE id = '123';
+----
+1
+
+query I
+SELECT count(*) FROM typed_stream
+WHERE (CASE WHEN flag THEN CASE WHEN flag THEN 123 ELSE user_id END ELSE user_id END) = '123';
+----
+1
+
+query I
+SELECT count(*) FROM typed_stream
+WHERE (CASE WHEN flag THEN 123 ELSE user_id END) IN ('123');
+----
+1
+
+query I
+SELECT count(*) FROM typed_stream
+WHERE (CASE WHEN flag THEN 123 ELSE user_id END) BETWEEN '123' AND '123';
+----
+1
+
+query I
+SELECT count(*)
+FROM (SELECT CASE WHEN flag THEN 123 ELSE user_id END AS id FROM typed_stream) o
+WHERE EXISTS (SELECT 1 FROM typed_stream t2 WHERE t2.user_id = o.id);
+----
+3
+
+statement error Error during planning: Cannot infer common argument type for comparison operation Int64 = Utf8
+SELECT *
+FROM (SELECT CASE WHEN flag THEN 123 ELSE user_id END AS id FROM typed_stream) o
+WHERE EXISTS (SELECT 1 FROM typed_stream t2 WHERE t2.number = o.id);
+
+# INTERSECT/EXCEPT compare their inputs, unlike UNION's text unification.
+statement error Error during planning:
+SELECT number FROM typed_stream INTERSECT SELECT user_id FROM typed_stream;
+
+statement error Error during planning:
+SELECT number FROM typed_stream EXCEPT SELECT user_id FROM typed_stream;
+
+statement ok
+DROP TABLE typed_stream;
+
+# -------------------------------------------------
+# Explicitly cast literals opt into numeric (not lexicographic) comparison.
+# -------------------------------------------------
+
+query I rowsort
+SELECT * FROM t_int WHERE column1 < CAST('5' AS BIGINT);
+----
+1
+
+query I rowsort
+SELECT * FROM t_int WHERE column1 > CAST('5' AS BIGINT);
+----
+1000
+325
+499
+
+query I rowsort
+SELECT * FROM t_int WHERE column1 <= CAST('5' AS BIGINT);
+----
+1
+5
+
+query I rowsort
+SELECT * FROM t_int WHERE column1 >= CAST('5' AS BIGINT);
+----
+1000
+325
+499
+5
+
+query I rowsort
+SELECT * FROM t_int WHERE column1 = CAST('5' AS BIGINT);
 ----
 5
 
 query I rowsort
-SELECT * FROM t_int WHERE column1 != '5';
+SELECT * FROM t_int WHERE column1 != CAST('5' AS BIGINT);
 ----
 1
 1000
@@ -75,77 +243,77 @@ SELECT * FROM t_int WHERE column1 != '5';
 499
 
 query I rowsort
-SELECT * FROM t_int WHERE column1 < '10';
+SELECT * FROM t_int WHERE column1 < CAST('10' AS BIGINT);
 ----
 1
 5
 
 query I rowsort
-SELECT * FROM t_int WHERE column1 <= '100';
+SELECT * FROM t_int WHERE column1 <= CAST('100' AS BIGINT);
 ----
 1
 5
 
 query I rowsort
-SELECT * FROM t_int WHERE column1 > '100';
+SELECT * FROM t_int WHERE column1 > CAST('100' AS BIGINT);
 ----
 1000
 325
 499
 
 # -------------------------------------------------
-# Float column with comparison operators vs string literals
+# Float columns with explicitly cast string literals
 # -------------------------------------------------
 
 query R rowsort
-SELECT * FROM t_float WHERE column1 < '5';
+SELECT * FROM t_float WHERE column1 < CAST('5' AS DOUBLE);
 ----
 1.5
 
 query R rowsort
-SELECT * FROM t_float WHERE column1 > '5';
+SELECT * FROM t_float WHERE column1 > CAST('5' AS DOUBLE);
 ----
 1000.1
 325.7
 499.9
 
 query R rowsort
-SELECT * FROM t_float WHERE column1 = '5';
+SELECT * FROM t_float WHERE column1 = CAST('5' AS DOUBLE);
 ----
 5
 
 query R rowsort
-SELECT * FROM t_float WHERE column1 = '5.0';
+SELECT * FROM t_float WHERE column1 = CAST('5.0' AS DOUBLE);
 ----
 5
 
 # -------------------------------------------------
-# Error on strings that cannot be cast to the numeric column type
+# Explicit CAST still rejects invalid numeric strings and overflow
 # -------------------------------------------------
 
 # Non-numeric string against integer column
 statement error Arrow error: Cast error: Cannot cast string 'hello' to value of Int64 type
-SELECT * FROM t_int WHERE column1 < 'hello';
+SELECT * FROM t_int WHERE column1 < CAST('hello' AS BIGINT);
 
 # Non-numeric string against float column
 statement error Arrow error: Cast error: Cannot cast string 'hello' to value of Float64 type
-SELECT * FROM t_float WHERE column1 < 'hello';
+SELECT * FROM t_float WHERE column1 < CAST('hello' AS DOUBLE);
 
 # Float string against integer column
 statement error Arrow error: Cast error: Cannot cast string '99.99' to value of Int64 type
-SELECT * FROM t_int WHERE column1 = '99.99';
+SELECT * FROM t_int WHERE column1 = CAST('99.99' AS BIGINT);
 
 # Empty string against integer column
 statement error Arrow error: Cast error: Cannot cast string '' to value of Int64 type
-SELECT * FROM t_int WHERE column1 = '';
+SELECT * FROM t_int WHERE column1 = CAST('' AS BIGINT);
 
 # Empty string against float column
 statement error Arrow error: Cast error: Cannot cast string '' to value of Float64 type
-SELECT * FROM t_float WHERE column1 = '';
+SELECT * FROM t_float WHERE column1 = CAST('' AS DOUBLE);
 
 # Overflow
 statement error Arrow error: Cast error: Cannot cast string '99999999999999999999' to value of Int64 type
-SELECT * FROM t_int WHERE column1 = '99999999999999999999';
+SELECT * FROM t_int WHERE column1 = CAST('99999999999999999999' AS BIGINT);
 
 
 # -------------------------------------------------
@@ -183,35 +351,35 @@ physical_plan
 04)--DataSourceExec: partitions=1, partition_sizes=[1]
 
 # -------------------------------------------------
-# BETWEEN uses comparison coercion (numeric preferred)
+# BETWEEN permits explicit numeric casts
 # -------------------------------------------------
 
 query I rowsort
-SELECT * FROM t_int WHERE column1 BETWEEN '5' AND '100';
+SELECT * FROM t_int WHERE column1 BETWEEN CAST('5' AS BIGINT) AND CAST('100' AS BIGINT);
 ----
 5
 
 # -------------------------------------------------
-# IN list uses comparison coercion (numeric preferred)
+# IN list permits explicit numeric casts
 # `x IN (a, b)` is semantically equivalent to `x = a OR x = b`
 # -------------------------------------------------
 
 # Basic IN list with string literals against integer column
 query I rowsort
-SELECT * FROM t_int WHERE column1 IN ('5', '325');
+SELECT * FROM t_int WHERE column1 IN (CAST('5' AS BIGINT), CAST('325' AS BIGINT));
 ----
 325
 5
 
 # IN list with a value where numeric coercion matters
 query I rowsort
-SELECT * FROM t_int WHERE column1 IN ('1000');
+SELECT * FROM t_int WHERE column1 IN (CAST('1000' AS BIGINT));
 ----
 1000
 
 # IN list with NOT
 query I rowsort
-SELECT * FROM t_int WHERE column1 NOT IN ('1', '5');
+SELECT * FROM t_int WHERE column1 NOT IN (CAST('1' AS BIGINT), CAST('5' AS BIGINT));
 ----
 1000
 325
@@ -219,14 +387,14 @@ SELECT * FROM t_int WHERE column1 NOT IN ('1', '5');
 
 # IN list with float column
 query R rowsort
-SELECT * FROM t_float WHERE column1 IN ('5.0', '325.7');
+SELECT * FROM t_float WHERE column1 IN (CAST('5.0' AS DOUBLE), CAST('325.7' AS DOUBLE));
 ----
 325.7
 5
 
 # Verify the plan shows numeric coercion (not CAST to Utf8)
 query TT
-EXPLAIN SELECT * FROM t_int WHERE column1 IN ('5', '325');
+EXPLAIN SELECT * FROM t_int WHERE column1 IN (CAST('5' AS BIGINT), CAST('325' AS BIGINT));
 ----
 logical_plan
 01)Filter: t_int.column1 = Int64(5) OR t_int.column1 = Int64(325)
@@ -237,45 +405,45 @@ physical_plan
 
 # Error on invalid string in IN list
 statement error Arrow error: Cast error: Cannot cast string 'hello' to value of Int64 type
-SELECT * FROM t_int WHERE column1 IN ('5', 'hello');
+SELECT * FROM t_int WHERE column1 IN (CAST('5' AS BIGINT), CAST('hello' AS BIGINT));
 
 # Mixed numeric literal and string literal in IN list against integer column
 query I rowsort
-SELECT * FROM t_int WHERE column1 IN (5, '325');
+SELECT * FROM t_int WHERE column1 IN (5, CAST('325' AS BIGINT));
 ----
 325
 5
 
 # Mixed numeric literal and string literal in IN list against float column
 query R rowsort
-SELECT * FROM t_float WHERE column1 IN (5, '325.7');
+SELECT * FROM t_float WHERE column1 IN (5, CAST('325.7' AS DOUBLE));
 ----
 325.7
 5
 
 # String and numeric literal order reversed
 query R rowsort
-SELECT * FROM t_float WHERE column1 IN ('5', 325.7);
+SELECT * FROM t_float WHERE column1 IN (CAST('5' AS DOUBLE), 325.7);
 ----
 325.7
 5
 
 # Float string literal against integer column errors (cannot cast '10.0' to Int64)
 statement error Arrow error: Cast error: Cannot cast string '10.0' to value of Int64 type
-SELECT * FROM t_int WHERE column1 IN (5, '10.0');
+SELECT * FROM t_int WHERE column1 IN (5, CAST('10.0' AS BIGINT));
 
 # Non-numeric string in mixed IN list still errors
 statement error Arrow error: Cast error: Cannot cast string 'hello' to value of Int64 type
-SELECT * FROM t_int WHERE column1 IN ('hello', 5);
+SELECT * FROM t_int WHERE column1 IN (CAST('hello' AS BIGINT), 5);
 
 # -------------------------------------------------
-# CASE WHEN uses comparison coercion for conditions (numeric preferred)
+# CASE WHEN comparisons permit explicit casts
 # `CASE expr WHEN val` is semantically equivalent to `expr = val`
 # -------------------------------------------------
 
 # Basic CASE with integer column and string WHEN values
 query T rowsort
-SELECT CASE column1 WHEN '5' THEN 'five' WHEN '1000' THEN 'thousand' ELSE 'other' END FROM t_int;
+SELECT CASE column1 WHEN CAST('5' AS BIGINT) THEN 'five' WHEN CAST('1000' AS BIGINT) THEN 'thousand' ELSE 'other' END FROM t_int;
 ----
 five
 other
@@ -283,10 +451,10 @@ other
 other
 thousand
 
-# CASE with float column: '5' is cast to 5.0 numerically, matching the row.
+# CASE with float column: explicitly cast '5' to 5.0, matching the row.
 # (Under string comparison, '5.0' != '5' would fail to match.)
 query T rowsort
-SELECT CASE column1 WHEN '5' THEN 'matched' ELSE 'no match' END FROM t_float;
+SELECT CASE column1 WHEN CAST('5' AS DOUBLE) THEN 'matched' ELSE 'no match' END FROM t_float;
 ----
 matched
 no match
@@ -306,66 +474,65 @@ small
 small
 
 # -------------------------------------------------
-# GREATEST / LEAST use comparison coercion (numeric preferred)
+# GREATEST / LEAST permit explicit numeric casts
 # -------------------------------------------------
 
 # GREATEST with mixed int and string: numeric comparison, not lexicographic.
 query I
-SELECT GREATEST(10, '9');
+SELECT GREATEST(10, CAST('9' AS BIGINT));
 ----
 10
 
 query T
-SELECT arrow_typeof(GREATEST(10, '9'));
+SELECT arrow_typeof(GREATEST(10, CAST('9' AS BIGINT)));
 ----
 Int64
 
 # LEAST with mixed int and string: numeric comparison.
 query I
-SELECT LEAST(10, '9');
+SELECT LEAST(10, CAST('9' AS BIGINT));
 ----
 9
 
 query T
-SELECT arrow_typeof(LEAST(10, '9'));
+SELECT arrow_typeof(LEAST(10, CAST('9' AS BIGINT)));
 ----
 Int64
 
 # GREATEST with multiple mixed args
 query I
-SELECT GREATEST(1, '20', 3);
+SELECT GREATEST(1, CAST('20' AS BIGINT), 3);
 ----
 20
 
 # Non-numeric string in GREATEST errors
 statement error Arrow error: Cast error: Cannot cast string 'hello' to value of Int64 type
-SELECT GREATEST(1, 'hello');
+SELECT GREATEST(1, CAST('hello' AS BIGINT));
 
 # -------------------------------------------------
-# NULLIF uses comparison coercion (numeric preferred)
+# NULLIF permits explicit numeric casts
 # -------------------------------------------------
 
 # NULLIF with mixed int and string: numeric comparison.
 # 10 != 9 numerically, so returns 10.
 query I
-SELECT NULLIF(10, '9');
+SELECT NULLIF(10, CAST('9' AS BIGINT));
 ----
 10
 
 query T
-SELECT arrow_typeof(NULLIF(10, '9'));
+SELECT arrow_typeof(NULLIF(10, CAST('9' AS BIGINT)));
 ----
 Int64
 
 # NULLIF with matching values: 10 = 10 numerically, so returns NULL.
 query I
-SELECT NULLIF(10, '10');
+SELECT NULLIF(10, CAST('10' AS BIGINT));
 ----
 NULL
 
 # -------------------------------------------------
-# Nested struct/map/list comparisons use comparison coercion
-# (numeric preferred) for their field/element types
+# Nested struct/map/list comparisons require explicit casts too
 # -------------------------------------------------
 
 statement ok
@@ -374,9 +541,12 @@ CREATE TABLE t_struct_int AS SELECT named_struct('val', column1) as s FROM (VALU
 statement ok
 CREATE TABLE t_struct_str AS SELECT named_struct('val', column1) as s FROM (VALUES ('5'), ('10'));
 
-# Struct comparison: the string field is cast to Int64 (numeric preferred).
-query ? rowsort
+statement error Error during planning: Cannot infer common argument type for comparison operation
 SELECT t1.s FROM t_struct_int t1, t_struct_str t2 WHERE t1.s = t2.s;
+
+# Struct comparison: explicitly cast the string field to Int64.
+query ? rowsort
+SELECT t1.s FROM t_struct_int t1, t_struct_str t2 WHERE t1.s = arrow_cast(t2.s, 'Struct("val": Int64)');
 ----
 {val: 10}
 {val: 5}
@@ -398,7 +568,7 @@ DROP TABLE t_struct_int;
 statement ok
 DROP TABLE t_struct_str;
 
-# List comparison: string elements are cast to Int64 (numeric preferred).
+# List comparison: explicitly cast string elements to Int64.
 statement ok
 CREATE TABLE t_list_int AS SELECT column1 as l FROM (VALUES ([1, 5, 10]), ([20, 30]));
 
@@ -416,15 +586,18 @@ SELECT arrow_typeof(l) FROM t_list_str LIMIT 1;
 ----
 List(Utf8)
 
-query ? rowsort
+statement error Error during planning: Cannot infer common argument type for comparison operation
 SELECT t1.l FROM t_list_int t1, t_list_str t2 WHERE t1.l = t2.l;
+
+query ? rowsort
+SELECT t1.l FROM t_list_int t1, t_list_str t2 WHERE t1.l = CAST(t2.l AS BIGINT[]);
 ----
 [20, 30]
 
 # List comparison casts the string list to the numeric element type (Int64),
 # not the other way around.
 query TT
-EXPLAIN SELECT t1.l FROM t_list_int t1, t_list_str t2 WHERE t1.l = t2.l;
+EXPLAIN SELECT t1.l FROM t_list_int t1, t_list_str t2 WHERE t1.l = CAST(t2.l AS BIGINT[]);
 ----
 logical_plan
 01)Projection: t1.l
@@ -461,7 +634,7 @@ DROP TABLE t_list_int;
 statement ok
 DROP TABLE t_list_str;
 
-# Map comparison: string values are cast to Int64 (numeric preferred).
+# Map comparison: explicitly cast string values to Int64.
 statement ok
 CREATE TABLE t_map_int AS SELECT MAP {'a': 1, 'b': 5} as m;
 
@@ -479,8 +652,11 @@ SELECT arrow_typeof(m) FROM t_map_str LIMIT 1;
 ----
 Map("entries": non-null Struct("key": non-null Utf8, "value": Utf8), unsorted)
 
-query ? rowsort
+statement error Error during planning: Cannot infer common argument type for comparison operation
 SELECT t1.m FROM t_map_int t1, t_map_str t2 WHERE t1.m = t2.m;
+
+query ? rowsort
+SELECT t1.m FROM t_map_int t1, t_map_str t2 WHERE t1.m = arrow_cast(t2.m, 'Map("entries": non-null Struct("key": non-null Utf8, "value": Int64), unsorted)');
 ----
 {a: 1, b: 5}
 
@@ -572,13 +748,13 @@ DROP TABLE t_str;
 # -------------------------------------------------
 
 # Array literal with mixed numeric/string elements errors
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning:
 SELECT [1, 'a'];
 
 # MAP with mixed-category list keys should also error
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning:
 SELECT MAP {[1,2,3]:1, ['a', 'b']:2};
 
 # MAP with mixed-category list values should also error
-query error Cannot cast string 'a' to value of Int64 type
+query error Error during planning:
 SELECT MAP {'a':[1,2,3], 'b':['a', 'b']};

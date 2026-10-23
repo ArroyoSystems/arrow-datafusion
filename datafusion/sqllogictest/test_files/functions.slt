@@ -1001,10 +1001,8 @@ SELECT greatest([2, 3], [1, 4], [5, 0]);
 ----
 [5, 0]
 
-query I
+query error Error during planning:
 SELECT greatest(1::int, 2::text)
-----
-2
 
 query R
 SELECT greatest(-1, 1, 2.3, 123456789, 3 + 5, -(-4))
@@ -1055,10 +1053,8 @@ SELECT greatest(NULL, NULL, NULL)
 ----
 NULL
 
-query I
+query error Error during planning:
 SELECT greatest(2, '4')
-----
-4
 
 query T
 SELECT greatest('foo', 'bar', 'foobar')
@@ -1199,10 +1195,8 @@ SELECT least([2, 3], [1, 4], [5, 0]);
 ----
 [1, 4]
 
-query I
+query error Error during planning:
 SELECT least(1::int, 2::text)
-----
-1
 
 query R
 SELECT least(-1, 1, 2.3, 123456789, 3 + 5, -(-4))
@@ -1253,10 +1247,8 @@ SELECT least(NULL, NULL, NULL)
 ----
 NULL
 
-query I
+query error Error during planning:
 SELECT least(2, '4')
-----
-2
 
 query T
 SELECT least('foo', 'bar', 'foobar')

@@ -3884,14 +3884,23 @@ mod tests {
             col("c1").eq(col("c1")),
             // u8 AND u8
             col("c3").bitand(col("c3")),
-            // utf8 = u8
-            col("c1").eq(col("c3")),
             // bool AND bool
             bool_expr.clone().and(bool_expr),
         ];
         for case in cases {
             test_csv_scan().await?.project(vec![case.clone()]).unwrap();
         }
+
+        // String/numeric comparisons fail when building the logical plan.
+        let e = test_csv_scan()
+            .await?
+            .project(vec![col("c1").eq(col("c3"))])
+            .unwrap_err();
+        assert!(matches!(e.find_root(), DataFusionError::Plan(_)));
+        assert_contains!(
+            e.to_string(),
+            "Cannot infer common argument type for comparison operation Utf8 = Int64"
+        );
         Ok(())
     }
 
@@ -3946,9 +3955,13 @@ mod tests {
             .filter(col("c12").lt(lit(0.05)))?
             .project(vec![col("c1").in_list(list, false)])?
             .build()?;
-        let e = plan(&logical_plan).await.unwrap_err().to_string();
+        let e = plan(&logical_plan).await.unwrap_err();
 
-        assert_contains!(&e, "Cannot cast string 'a' to value of Int64 type");
+        assert!(matches!(e.find_root(), DataFusionError::Plan(_)));
+        assert_contains!(
+            e.to_string(),
+            "Can not find compatible types to compare Utf8 with [Utf8, Int64]"
+        );
 
         Ok(())
     }

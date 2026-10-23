@@ -426,15 +426,14 @@ physical_plan
 02)--DataSourceExec: partitions=1, partition_sizes=[1]
 
 
-# Query using an integer literal: comparison coercion prefers numeric types,
-# so the dictionary string column is cast to Int64
+# Numeric comparison requires explicitly casting the dictionary string column.
 query TT
-SELECT * from test where column2 = 1;
+SELECT * from test where CAST(column2 AS BIGINT) = 1;
 ----
 row1 1
 
 query TT
-explain SELECT * from test where column2 = 1;
+explain SELECT * from test where CAST(column2 AS BIGINT) = 1;
 ----
 logical_plan
 01)Filter: CAST(test.column2 AS Int64) = Int64(1)

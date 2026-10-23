@@ -31,8 +31,7 @@ use datafusion_common::config::ConfigOptions;
 use datafusion_common::tree_node::{Transformed, TreeNode, TreeNodeRewriter};
 use datafusion_common::{
     Column, DFSchema, DFSchemaRef, DataFusionError, Result, ScalarValue, TableReference,
-    exec_err, internal_datafusion_err, internal_err, not_impl_err, plan_datafusion_err,
-    plan_err,
+    exec_err, internal_err, not_impl_err, plan_datafusion_err, plan_err,
 };
 use datafusion_expr::expr::{
     self, AggregateFunctionParams, Alias, Between, BinaryExpr, Case, Exists,
@@ -632,21 +631,21 @@ impl TreeNodeRewriter for TypeCoercionRewriter<'_> {
                 let low_type = low.get_type(self.schema)?;
                 let low_coerced_type = comparison_coercion(&expr_type, &low_type)
                     .ok_or_else(|| {
-                        internal_datafusion_err!(
+                        plan_datafusion_err!(
                             "Failed to coerce types {expr_type} and {low_type} in BETWEEN expression"
                         )
                     })?;
                 let high_type = high.get_type(self.schema)?;
                 let high_coerced_type = comparison_coercion(&expr_type, &high_type)
                     .ok_or_else(|| {
-                        internal_datafusion_err!(
+                        plan_datafusion_err!(
                             "Failed to coerce types {expr_type} and {high_type} in BETWEEN expression"
                         )
                     })?;
                 let coercion_type =
                     comparison_coercion(&low_coerced_type, &high_coerced_type)
                         .ok_or_else(|| {
-                            internal_datafusion_err!(
+                            plan_datafusion_err!(
                                 "Failed to coerce types {expr_type} and {high_type} in BETWEEN expression"
                             )
                         })?;
@@ -1329,6 +1328,22 @@ mod test {
             produce_one_row: false,
             schema: Arc::new(DFSchema::empty()),
         }))
+    }
+
+    #[test]
+    fn between_string_numeric_is_planning_error() -> Result<()> {
+        for predicate in [
+            lit("abc").between(lit(1_i64), lit(2_i64)),
+            lit("abc").between(lit("a"), lit(2_i64)),
+            lit(ScalarValue::Null).between(lit("a"), lit(2_i64)),
+        ] {
+            let plan = LogicalPlan::Filter(Filter::try_new(predicate, empty())?);
+            assert_type_coercion_error(
+                plan,
+                "Error during planning: Failed to coerce types",
+            )?;
+        }
+        Ok(())
     }
 
     fn empty_with_type(data_type: DataType) -> Arc<LogicalPlan> {
@@ -2406,9 +2421,8 @@ mod test {
         let actual = coerce_case_expression(case, &schema)?;
         assert_eq!(expected, actual);
 
-        // CASE string WHEN float/integer/string: comparison coercion
-        // prefers numeric, so the common type for the CASE expr and
-        // WHEN values is Float32.
+        // CASE compares its operand with each WHEN value. Mixed string/numeric
+        // operands require explicit casts, unlike THEN/ELSE result unification.
         let case = Case {
             expr: Some(Box::new(col("string"))),
             when_then_expr: vec![
@@ -2418,6 +2432,16 @@ mod test {
             ],
             else_expr: Some(Box::new(col("string"))),
         };
+        let err = coerce_case_expression(case.clone(), &schema).unwrap_err();
+        assert_snapshot!(
+            err.strip_backtrace(),
+            @"Error during planning: Failed to coerce case (Utf8) and when (Float32, Int32, Utf8) to common types in CASE WHEN expression"
+        );
+
+        // Explicit casts still opt into numeric comparison semantics.
+        let mut case = case;
+        case.expr = Some(Box::new(cast(col("string"), DataType::Float32)));
+        *case.when_then_expr[2].0 = cast(col("string"), DataType::Float32);
         let case_when_common_type = DataType::Float32;
         let then_else_common_type = Utf8;
         let expected = cast_helper(
@@ -2447,7 +2471,7 @@ mod test {
         let case = Case {
             expr: Some(Box::new(col("string"))),
             when_then_expr: vec![
-                (Box::new(col("float")), Box::new(col("date"))),
+                (Box::new(cast(col("float"), Utf8)), Box::new(col("date"))),
                 (Box::new(col("string")), Box::new(col("float"))),
                 (Box::new(col("string")), Box::new(col("binary"))),
             ],

@@ -792,34 +792,35 @@ fn test_decimal_cross_variant_comparison_coercion() -> Result<()> {
     Ok(())
 }
 
-/// Tests that `comparison_coercion` prefers the numeric type when one side is
-/// numeric and the other is a string (e.g., `numeric_col < '123'`).
+/// Strings and numbers require explicit casts in comparison contexts.
 #[test]
-fn test_comparison_coercion_prefers_numeric() {
-    assert_eq!(
-        comparison_coercion(&DataType::Int32, &DataType::Utf8),
-        Some(DataType::Int32)
-    );
-    assert_eq!(
-        comparison_coercion(&DataType::Utf8, &DataType::Int32),
-        Some(DataType::Int32)
-    );
-    assert_eq!(
-        comparison_coercion(&DataType::Utf8, &DataType::Float64),
-        Some(DataType::Float64)
-    );
-    assert_eq!(
-        comparison_coercion(&DataType::Float64, &DataType::Utf8),
-        Some(DataType::Float64)
-    );
-    assert_eq!(
-        comparison_coercion(&DataType::Int64, &DataType::LargeUtf8),
-        Some(DataType::Int64)
-    );
-    assert_eq!(
-        comparison_coercion(&DataType::Utf8View, &DataType::Int16),
-        Some(DataType::Int16)
-    );
+fn test_comparison_coercion_rejects_string_numeric() {
+    for string in [DataType::Utf8, DataType::LargeUtf8, DataType::Utf8View] {
+        for number in [
+            DataType::Int8,
+            DataType::Int16,
+            DataType::Int32,
+            DataType::Int64,
+            DataType::UInt8,
+            DataType::UInt16,
+            DataType::UInt32,
+            DataType::UInt64,
+            DataType::Float16,
+            DataType::Float32,
+            DataType::Float64,
+            DataType::Decimal128(20, 3),
+            DataType::Decimal256(40, 3),
+        ] {
+            assert_eq!(comparison_coercion(&string, &number), None);
+            assert_eq!(comparison_coercion(&number, &string), None);
+            // COALESCE, arrays and VALUES use the shared resolution helper.
+            assert_eq!(
+                type_union_resolution(&[string.clone(), number.clone()]),
+                None
+            );
+            assert_eq!(type_union_resolution(&[number, string.clone()]), None);
+        }
+    }
     // String-string stays string
     assert_eq!(
         comparison_coercion(&DataType::Utf8, &DataType::Utf8),
@@ -828,6 +829,10 @@ fn test_comparison_coercion_prefers_numeric() {
     // Numeric-numeric stays numeric
     assert_eq!(
         comparison_coercion(&DataType::Int32, &DataType::Int64),
+        Some(DataType::Int64)
+    );
+    assert_eq!(
+        type_union_resolution(&[DataType::Null, DataType::Int32, DataType::Int64]),
         Some(DataType::Int64)
     );
 }
@@ -872,8 +877,7 @@ fn test_type_union_coercion_prefers_string() {
     );
 }
 
-/// Tests that comparison operators coerce to numeric when comparing
-/// numeric and string types.
+/// All comparison operators reject implicit string/numeric casts.
 #[test]
 fn test_binary_comparison_string_numeric_coercion() -> Result<()> {
     let comparison_ops = [
@@ -883,17 +887,22 @@ fn test_binary_comparison_string_numeric_coercion() -> Result<()> {
         Operator::LtEq,
         Operator::Gt,
         Operator::GtEq,
+        Operator::IsDistinctFrom,
+        Operator::IsNotDistinctFrom,
     ];
     for op in &comparison_ops {
-        let (lhs, rhs) = BinaryTypeCoercer::new(&DataType::Int64, op, &DataType::Utf8)
-            .get_input_types()?;
-        assert_eq!(lhs, DataType::Int64, "Op {op}: Int64 vs Utf8 -> lhs");
-        assert_eq!(rhs, DataType::Int64, "Op {op}: Int64 vs Utf8 -> rhs");
-
-        let (lhs, rhs) = BinaryTypeCoercer::new(&DataType::Utf8, op, &DataType::Float64)
-            .get_input_types()?;
-        assert_eq!(lhs, DataType::Float64, "Op {op}: Utf8 vs Float64 -> lhs");
-        assert_eq!(rhs, DataType::Float64, "Op {op}: Utf8 vs Float64 -> rhs");
+        assert!(
+            BinaryTypeCoercer::new(&DataType::Int64, op, &DataType::Utf8)
+                .get_input_types()
+                .is_err(),
+            "Op {op}: Int64 vs Utf8"
+        );
+        assert!(
+            BinaryTypeCoercer::new(&DataType::Utf8, op, &DataType::Float64)
+                .get_input_types()
+                .is_err(),
+            "Op {op}: Utf8 vs Float64"
+        );
     }
     Ok(())
 }

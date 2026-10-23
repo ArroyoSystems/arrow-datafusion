@@ -44,7 +44,7 @@ fn test_ree_type_coercion() {
         Some(Int32)
     );
 
-    // In comparison context, numeric is preferred over string
+    // String/numeric comparisons require an explicit cast.
     let lhs_type = RunEndEncoded(
         Arc::new(Field::new("run_ends", Int8, false)),
         Arc::new(Field::new("values", Utf8, false)),
@@ -55,7 +55,7 @@ fn test_ree_type_coercion() {
     );
     assert_eq!(
         ree_coercion(&lhs_type, &rhs_type, true, comparison_coercion),
-        Some(Int16)
+        None
     );
 
     // Since we can coerce values of Utf8 to Binary can support this

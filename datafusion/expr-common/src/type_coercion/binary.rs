@@ -653,7 +653,7 @@ pub fn type_union_resolution(data_types: &[DataType]) -> Option<DataType> {
             // Coerced type may be different from the candidate and current data type
             // For example,
             //  i64 and decimal(7, 2) are expect to get coerced type decimal(22, 2)
-            //  numeric string ('1') and numeric (2) are expect to get coerced type numeric (1, 2)
+            // String/numeric pairs require an explicit cast.
             if let Some(t) = type_union_resolution_coercion(data_type, candidate_t) {
                 candidate_type = Some(t);
             } else {
@@ -777,7 +777,6 @@ fn type_union_resolution_coercion(
             .or_else(|| temporal_coercion_nonstrict_timezone(lhs_type, rhs_type))
             .or_else(|| string_coercion(lhs_type, rhs_type))
             .or_else(|| null_coercion(lhs_type, rhs_type))
-            .or_else(|| string_numeric_coercion(lhs_type, rhs_type))
             .or_else(|| binary_coercion(lhs_type, rhs_type)),
     }
 }
@@ -881,8 +880,8 @@ pub fn try_type_union_resolution_with_struct(
 /// numeric, this prefers strings because every number has a textual
 /// representation but not every string can be parsed as a number (e.g., `SELECT
 /// 1 UNION SELECT 'a'` coerces both sides to a string). This is in contrast to
-/// [`comparison_coercion`], which prefers numeric types so that ordering and
-/// equality follow numeric semantics.
+/// [`comparison_coercion`], which requires explicit casts between strings and
+/// numbers.
 pub fn type_union_coercion(lhs_type: &DataType, rhs_type: &DataType) -> Option<DataType> {
     if lhs_type.equals_datatype(rhs_type) {
         return Some(lhs_type.clone());
@@ -916,8 +915,7 @@ pub fn type_union_coercion(lhs_type: &DataType, rhs_type: &DataType) -> Option<D
 ///
 /// # Numeric / String comparisons
 ///
-/// Prefers the numeric type (e.g., `'2' > 1` where `1` is `Int32` coerces
-/// `'2'` to `Int32`).
+/// String/numeric comparisons require explicit casts.
 ///
 /// For type unification contexts (UNION, CASE THEN/ELSE), use
 /// [`type_union_coercion`] instead.
@@ -933,23 +931,10 @@ pub fn comparison_coercion(lhs_type: &DataType, rhs_type: &DataType) -> Option<D
         .or_else(|| string_coercion(lhs_type, rhs_type))
         .or_else(|| list_coercion(lhs_type, rhs_type, comparison_coercion))
         .or_else(|| null_coercion(lhs_type, rhs_type))
-        .or_else(|| string_numeric_coercion(lhs_type, rhs_type))
         .or_else(|| string_temporal_coercion(lhs_type, rhs_type))
         .or_else(|| binary_coercion(lhs_type, rhs_type))
         .or_else(|| struct_coercion(lhs_type, rhs_type, comparison_coercion))
         .or_else(|| map_coercion(lhs_type, rhs_type, comparison_coercion))
-}
-
-/// Coerce a numeric/string pair to the numeric type.
-///
-/// Used by [`comparison_coercion`].
-fn string_numeric_coercion(lhs_type: &DataType, rhs_type: &DataType) -> Option<DataType> {
-    use arrow::datatypes::DataType::*;
-    match (lhs_type, rhs_type) {
-        (lhs, Utf8 | LargeUtf8 | Utf8View) if lhs.is_numeric() => Some(lhs.clone()),
-        (Utf8 | LargeUtf8 | Utf8View, rhs) if rhs.is_numeric() => Some(rhs.clone()),
-        _ => None,
-    }
 }
 
 /// Coerce a numeric/string pair to the string type.
